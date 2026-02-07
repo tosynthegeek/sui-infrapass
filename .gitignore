@@ -1,8 +1,8 @@
 /target
 
 # contracts
-build/*
-traces/*
+build/
+traces/
 .trace
 .coverage*
 Pub.*.toml
