@@ -1,8 +1,17 @@
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use sui_json_rpc_types::{SuiData, SuiObjectDataOptions, SuiObjectResponseQuery};
-use sui_sdk::SuiClient;
-use sui_types::base_types::{ObjectID, SuiAddress};
+use shared_crypto::intent::Intent;
+use sui_json_rpc_types::{
+    SuiData, SuiObjectDataOptions, SuiObjectResponseQuery, SuiTransactionBlockResponse,
+    SuiTransactionBlockResponseOptions,
+};
+use sui_keys::key_identity::KeyIdentity;
+use sui_sdk::{SuiClient, types::transaction::Transaction, wallet_context::WalletContext};
+use sui_types::{
+    base_types::{ObjectID, SuiAddress},
+    transaction::{ProgrammableTransaction, TransactionData},
+    transaction_driver_types::ExecuteTransactionRequestType,
+};
 
 use crate::{
     transactions::provider::ProviderState,
@@ -15,6 +24,16 @@ pub trait SuiClientExt {
     async fn get_tier_info(&self, tier_id: ObjectID) -> Result<TierInfo>;
     async fn get_balance(&self, owner: SuiAddress, coin_type: CoinType) -> Result<u128>;
     async fn provider_state(&self, sender: SuiAddress) -> Result<ProviderState>;
+    async fn sign_and_execute_tx(
+        &self,
+        tx_data: TransactionData,
+        mut wallet: WalletContext,
+    ) -> Result<SuiTransactionBlockResponse>;
+    async fn build_tx_data(
+        &self,
+        pt: ProgrammableTransaction,
+        sender: SuiAddress,
+    ) -> Result<TransactionData>;
 }
 
 #[async_trait]
@@ -109,5 +128,56 @@ impl SuiClientExt for SuiClient {
         };
 
         Ok(provider_state)
+    }
+
+    async fn sign_and_execute_tx(
+        &self,
+        tx_data: TransactionData,
+        mut wallet: WalletContext,
+    ) -> Result<SuiTransactionBlockResponse, anyhow::Error> {
+        let sender = wallet.active_address()?;
+        let key = KeyIdentity::Address(sender);
+
+        let signature = wallet
+            .sign_secure(&key, &tx_data, Intent::sui_transaction())
+            .await?;
+
+        let tx = Transaction::from_data(tx_data, vec![signature]);
+
+        let response = self
+            .quorum_driver_api()
+            .execute_transaction_block(
+                tx,
+                SuiTransactionBlockResponseOptions::full_content(),
+                Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+            )
+            .await?;
+
+        Ok(response)
+    }
+
+    async fn build_tx_data(
+        &self,
+        pt: ProgrammableTransaction,
+        sender: SuiAddress,
+    ) -> Result<TransactionData> {
+        let gas_coins = self
+            .coin_read_api()
+            .get_coins(sender, None, None, None)
+            .await?;
+
+        let gas_coin = gas_coins
+            .data
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No gas coins available for sender"))?;
+
+        let gas_object = (gas_coin.coin_object_id, gas_coin.version, gas_coin.digest);
+
+        let gas_price = self.read_api().get_reference_gas_price().await?;
+
+        let tx_data =
+            TransactionData::new_programmable(sender, vec![gas_object], pt, 10_000_000, gas_price);
+
+        Ok(tx_data)
     }
 }
