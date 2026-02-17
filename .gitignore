@@ -7,3 +7,7 @@ traces/
 .trace
 .coverage*
 Pub.*.toml
+
+deploy.json
+output.json
+Published.toml

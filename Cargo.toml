@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 async-trait = "0.1"
 clap = { version = "4.5", features = ["derive"] }
+futures = "0.3.31"
 tracing = {version = "0.1.37", features = ["log", "std", "attributes"] }
 tracing-appender = "0.2.2"
 tracing-opentelemetry = "0.32.0"
@@ -21,3 +22,15 @@ tokio = { version = "1.2", features = ["full"] }
 anyhow = "1.0"
 serde = "1.0.118"
 serde_json = "1.0.61"
+
+[lib]
+name = "infrapass"
+path = "src/lib.rs"
+
+[[bin]]
+name = "infrapass-cli"
+path = "src/bin/cli.rs"
+
+[[bin]]
+name = "infrapass-server"
+path = "src/bin/server.rs"
