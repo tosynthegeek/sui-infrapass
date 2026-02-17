@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use crate::utils::constants::TEST_TOKEN_PACKAGE_ID;
 use anyhow::{Ok, Result};
 use sui_types::TypeTag;
 
@@ -14,31 +15,31 @@ pub enum CoinType {
 impl CoinType {
     pub fn to_type_tag(&self) -> Result<TypeTag> {
         let type_str = match self {
-            CoinType::SUI => "0x2::sui::SUI",
+            CoinType::SUI => "0x2::sui::SUI".to_string(),
 
             CoinType::WAL => {
-                "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL"
+                format!("{TEST_TOKEN_PACKAGE_ID}::wal::WAL")
             }
 
             CoinType::USDC => {
-                "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+                format!("{TEST_TOKEN_PACKAGE_ID}::usdc::USDC")
             }
 
             CoinType::USDT => {
-                "0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT"
+                format!("{TEST_TOKEN_PACKAGE_ID}::usdt::USDT")
             }
         };
 
-        TypeTag::from_str(type_str)
+        TypeTag::from_str(&type_str)
             .map_err(|e| anyhow::anyhow!("Invalid type tag for {:?}: {}", self, e))
     }
 
     pub fn package_id(&self) -> &str {
         match self {
             CoinType::SUI => "0x2",
-            CoinType::WAL => "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59",
-            CoinType::USDC => "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7",
-            CoinType::USDT => "0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068",
+            CoinType::WAL => TEST_TOKEN_PACKAGE_ID,
+            CoinType::USDC => TEST_TOKEN_PACKAGE_ID,
+            CoinType::USDT => TEST_TOKEN_PACKAGE_ID,
         }
     }
 
