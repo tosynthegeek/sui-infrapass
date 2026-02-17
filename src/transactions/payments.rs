@@ -11,7 +11,6 @@ use sui_types::{
 use crate::{
     client::client_ext::SuiClientExt,
     ptb::{clock::clock_arg, object_ext::ObjectIDExt},
-    transactions::tx_builder::build_tx_data,
     types::settlement::UsageSettlement,
     utils::{
         coin::prepare_payment_coin,
@@ -22,7 +21,6 @@ use crate::{
 pub async fn purchase_entitlement_tx(
     client: &SuiClient,
     sender: SuiAddress,
-    store_id: ObjectID,
     service_id: ObjectID,
     tier_id: ObjectID,
     payment_amount: u64,
@@ -44,6 +42,7 @@ pub async fn purchase_entitlement_tx(
 
     let package_id = ObjectID::from_hex_literal(PACKAGE_ID)?;
     let registry_id = ObjectID::from_hex_literal(REGISTRY_ID)?;
+    let store_id = ObjectID::from_hex_literal(ENTITLEMENT_STORE_ID)?;
 
     let store_arg = store_id.to_shared_mut_ptb_arg(client, &mut ptb).await?;
     let service_arg = service_id.to_owned_ptb_arg(client, &mut ptb).await?;
@@ -70,7 +69,7 @@ pub async fn purchase_entitlement_tx(
     ));
 
     let pt = ptb.finish();
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
 pub async fn settle_usage_batch_tx(
@@ -123,5 +122,5 @@ pub async fn settle_usage_batch_tx(
     ));
 
     let pt = ptb.finish();
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }

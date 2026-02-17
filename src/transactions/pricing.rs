@@ -8,10 +8,7 @@ use sui_types::{
 };
 
 use crate::{
-    ptb::{clock::clock_arg, object_ext::ObjectIDExt, tier_config::build_tier_config_args},
-    transactions::{provider::get_provider_state, tx_builder::build_tx_data},
-    types::{coin::CoinType, types::TierConfigInput},
-    utils::constants::{PACKAGE_ID, REGISTRY_ID},
+    client::client_ext::SuiClientExt, ptb::{clock::clock_arg, object_ext::ObjectIDExt, tier_config::build_tier_config_args}, transactions::provider::get_provider_state, types::{coin::CoinType, types::TierConfigInput}, utils::constants::{PACKAGE_ID, REGISTRY_ID}
 };
 
 pub async fn create_pricing_tier_tx(
@@ -70,7 +67,7 @@ pub async fn create_pricing_tier_tx(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
 pub async fn add_tier_to_service_tx(
@@ -115,7 +112,7 @@ pub async fn add_tier_to_service_tx(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
 pub async fn update_tier_price_tx(
@@ -153,7 +150,7 @@ pub async fn update_tier_price_tx(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
 pub async fn deactivate_tier_tx(
@@ -189,7 +186,7 @@ pub async fn deactivate_tier_tx(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
 pub async fn reactivate_tier_tx(
@@ -225,7 +222,7 @@ pub async fn reactivate_tier_tx(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
 pub async fn remove_tier_from_service_tx(
@@ -260,12 +257,11 @@ pub async fn remove_tier_from_service_tx(
             provider_cap_arg,
             registry_arg,
             tier_arg,
-            provider_cap_arg,
             clock_arg,
         ],
     ));
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }

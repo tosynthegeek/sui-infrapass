@@ -8,8 +8,9 @@ use sui_types::{
 };
 
 use crate::{
+    client::client_ext::SuiClientExt,
     ptb::{clock::clock_arg, object_ext::ObjectIDExt},
-    transactions::{provider::get_provider_state, tx_builder::build_tx_data},
+    transactions::provider::get_provider_state,
     utils::constants::{CLOCK_OBJECT_ID, PACKAGE_ID, REGISTRY_ID},
 };
 
@@ -45,7 +46,7 @@ pub async fn register_provider_tx(
 
     let pt = ptb.finish();
 
-    let tx_data = build_tx_data(pt, client, sender).await?;
+    let tx_data = client.build_tx_data(pt, sender).await?;
 
     Ok(tx_data)
 }
@@ -97,10 +98,10 @@ pub async fn provider_create_service(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
-pub async fn update_service_metadata_tx(
+pub async fn set_service_active_tx(
     client: &SuiClient,
     sender: SuiAddress,
     service_id: ObjectID,
@@ -126,10 +127,10 @@ pub async fn update_service_metadata_tx(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
 
-pub async fn update_provide_address_tx(
+pub async fn update_service_metadata_tx(
     client: &SuiClient,
     sender: SuiAddress,
     service_id: ObjectID,
@@ -143,9 +144,7 @@ pub async fn update_provide_address_tx(
     let registry_arg = registry_id.to_shared_imm_ptb_arg(client, &mut ptb).await?;
 
     let service_arg = service_id.to_owned_ptb_arg(client, &mut ptb).await?;
-
     let metadata_arg = ptb.pure(metadata_uri.into_bytes())?;
-
     let clock_arg = clock_arg(client, &mut ptb).await?;
 
     ptb.command(Command::move_call(
@@ -158,5 +157,37 @@ pub async fn update_provide_address_tx(
 
     let pt = ptb.finish();
 
-    build_tx_data(pt, client, sender).await
+    client.build_tx_data(pt, sender).await
 }
+
+// pub async fn update_provider_address_tx(
+//     client: &SuiClient,
+//     sender: SuiAddress,
+//     service_id: ObjectID,
+//     provider_id: ObjectID,
+// ) -> Result<TransactionData> {
+//     let registry_id = ObjectID::from_hex_literal(REGISTRY_ID)?;
+//     let package_id = ObjectID::from_hex_literal(PACKAGE_ID)?;
+
+//     let mut ptb = ProgrammableTransactionBuilder::new();
+
+//     let registry_arg = registry_id.to_shared_imm_ptb_arg(client, &mut ptb).await?;
+
+//     let service_arg = service_id.to_owned_ptb_arg(client, &mut ptb).await?;
+
+//     let metadata_arg = ptb.pure(metadata_uri.into_bytes())?;
+
+//     let clock_arg = clock_arg(client, &mut ptb).await?;
+
+//     ptb.command(Command::move_call(
+//         package_id,
+//         Identifier::new("registry")?,
+//         Identifier::new("update_provider_address_entry")?,
+//         vec![],
+//         vec![registry_arg, service_arg, metadata_arg, clock_arg],
+//     ));
+
+//     let pt = ptb.finish();
+
+//     client.build_tx_data(pt, sender).await
+// }
