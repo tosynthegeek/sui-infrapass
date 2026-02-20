@@ -26,7 +26,7 @@ use tokio::{
     time::Instant,
 };
 use tonic::transport::Channel;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 #[derive(Clone)]
 pub struct EventListener {
@@ -164,7 +164,6 @@ impl EventListener {
                                 metrics.total_events_processed += 1;
                             }
 
-                            info!("Recieved event {:?} ", event);
                             if self.event_tx.send(parsed).await.is_err() {
                                 warn!("Event receiver dropped, shutting down");
                                 return;
@@ -203,7 +202,6 @@ impl EventListener {
         match label.as_str() {
             "registry::ProviderRegistered" => {
                 let inner: ProviderRegistered = bcs::from_bytes(bcs_bytes).ok()?;
-                info!("Parsed ProviderRegistered event: {:?}", inner);
                 Some(ProtocolEvent::ProviderRegistered(inner))
             }
             "registry::ServiceCreated" => {
@@ -270,17 +268,10 @@ impl EventListener {
             .read_api()
             .get_checkpoint(checkpoint_id)
             .await?;
-        let sequence = checkpoint.sequence_number;
-        debug!("Processing RPC checkpoint {:?}", sequence);
 
         let expected_package_id = ObjectID::from_hex_literal(&self.package_id)?;
 
         for tx in &checkpoint.transactions {
-            info!(
-                "Comparing {} in checkpoint {}",
-                tx.base58_encode(),
-                tx_digest
-            );
             if tx.base58_encode() != tx_digest {
                 continue;
             }
@@ -298,11 +289,6 @@ impl EventListener {
 
             if let Some(tx_events) = &full_tx.events {
                 for event in &tx_events.data {
-                    info!(
-                        "Comparing event package_id {} with {}",
-                        event.package_id.to_hex(),
-                        self.package_id,
-                    );
                     if event.package_id != expected_package_id {
                         continue;
                     }
