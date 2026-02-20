@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use sui_types::id::ID;
+use sui_types::{base_types::SuiAddress, id::ID};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderRegistered {
-    pub provider_address: String,
+    pub provider_address: SuiAddress,
     pub profile_id: ID,
     pub timestamp: u64,
 }
@@ -11,7 +11,7 @@ pub struct ProviderRegistered {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceCreated {
     pub service_id: ID,
-    pub provider_address: String,
+    pub provider_address: SuiAddress,
     pub service_type: Vec<u8>,
     pub metadata_uri: Vec<u8>,
     pub timestamp: u64,
