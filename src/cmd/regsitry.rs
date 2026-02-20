@@ -70,18 +70,6 @@ impl RegistryCommands {
 
                 handle_response(&resp);
 
-                let effects = resp
-                    .effects
-                    .as_ref()
-                    .ok_or_else(|| anyhow::anyhow!("Missing transaction effects"))?;
-
-                for created in effects.created() {
-                    let object_id = created.reference.object_id;
-                    let version = created.reference.version;
-
-                    info!("Created object: {} @ version {}", object_id, version);
-                }
-
                 Ok(())
             }
             RegistryCommands::CreateService {
