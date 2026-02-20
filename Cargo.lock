@@ -1968,6 +1968,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
+
+[[package]]
 name = "downcast"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3212,18 +3218,26 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "bcs",
+ "bytes",
  "clap",
+ "dotenvy",
  "futures",
+ "prost",
+ "prost-types",
  "serde",
  "serde_json",
  "shared-crypto",
  "sui-config",
  "sui-json-rpc-types",
  "sui-keys",
+ "sui-rpc 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk)",
  "sui-sdk",
  "sui-transaction-builder",
  "sui-types",
  "tokio",
+ "tonic",
+ "tonic-build",
  "tracing",
  "tracing-appender",
  "tracing-opentelemetry",
@@ -7064,7 +7078,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "signature 2.2.0",
- "sui-sdk-types",
+ "sui-sdk-types 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
 ]
 
 [[package]]
@@ -7313,7 +7327,28 @@ dependencies = [
  "prost-types",
  "serde",
  "serde_json",
- "sui-sdk-types",
+ "sui-sdk-types 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
+ "tap",
+ "tokio",
+ "tonic",
+ "tonic-prost",
+]
+
+[[package]]
+name = "sui-rpc"
+version = "0.2.2"
+source = "git+https://github.com/MystenLabs/sui-rust-sdk#e59f01ea07fa58a782685ef4c9c3047d2182a456"
+dependencies = [
+ "base64 0.22.1",
+ "bcs",
+ "bytes",
+ "futures",
+ "http",
+ "prost",
+ "prost-types",
+ "serde",
+ "serde_json",
+ "sui-sdk-types 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk)",
  "tap",
  "tokio",
  "tonic",
@@ -7355,8 +7390,8 @@ dependencies = [
  "sui-name-service",
  "sui-package-resolver",
  "sui-protocol-config",
- "sui-rpc",
- "sui-sdk-types",
+ "sui-rpc 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
+ "sui-sdk-types 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
  "sui-transaction-builder",
  "sui-types",
  "tap",
@@ -7403,9 +7438,9 @@ dependencies = [
  "sui-json-rpc-api",
  "sui-json-rpc-types",
  "sui-keys",
- "sui-rpc",
+ "sui-rpc 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
  "sui-rpc-api",
- "sui-sdk-types",
+ "sui-sdk-types 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
  "sui-transaction-builder",
  "sui-types",
  "thiserror 1.0.69",
@@ -7417,6 +7452,27 @@ dependencies = [
 name = "sui-sdk-types"
 version = "0.2.2"
 source = "git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6#aef7655b45dcf3747281456f4999542dc52f6af6"
+dependencies = [
+ "base64ct",
+ "bcs",
+ "blake2",
+ "bnum",
+ "bs58 0.5.1",
+ "bytes",
+ "bytestring",
+ "itertools 0.14.0",
+ "roaring 0.11.3",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_with",
+ "winnow",
+]
+
+[[package]]
+name = "sui-sdk-types"
+version = "0.2.2"
+source = "git+https://github.com/MystenLabs/sui-rust-sdk#e59f01ea07fa58a782685ef4c9c3047d2182a456"
 dependencies = [
  "base64ct",
  "bcs",
@@ -7517,8 +7573,8 @@ dependencies = [
  "sui-enum-compat-util",
  "sui-macros",
  "sui-protocol-config",
- "sui-rpc",
- "sui-sdk-types",
+ "sui-rpc 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
+ "sui-sdk-types 0.2.2 (git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=aef7655b45dcf3747281456f4999542dc52f6af6)",
  "tap",
  "thiserror 1.0.69",
  "tonic",
@@ -7928,9 +7984,9 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.14.3"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a286e33f82f8a1ee2df63f4fa35c0becf4a85a0cb03091a15fd7bf0b402dc94a"
+checksum = "7f32a6f80051a4111560201420c7885d0082ba9efe2ab61875c587bb6b18b9a0"
 dependencies = [
  "async-trait",
  "axum",
@@ -7960,9 +8016,9 @@ dependencies = [
 
 [[package]]
 name = "tonic-build"
-version = "0.14.3"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27aac809edf60b741e2d7db6367214d078856b8a5bff0087e94ff330fb97b6fc"
+checksum = "ce6d8958ed3be404120ca43ffa0fb1e1fc7be214e96c8d33bd43a131b6eebc9e"
 dependencies = [
  "prettyplease",
  "proc-macro2",

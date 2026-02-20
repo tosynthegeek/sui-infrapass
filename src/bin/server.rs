@@ -1,12 +1,14 @@
 use anyhow::Result;
+use dotenvy::dotenv;
 use infrapass::events::{handlers::handle_event, listener::EventListener, types::ProtocolEvent};
-use sui_sdk::SuiClientBuilder;
 use tokio::sync::mpsc;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    dotenv().ok();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
@@ -21,21 +23,11 @@ async fn main() -> Result<()> {
 
     info!("Starting Infrapass Event Listener");
 
-    let ws_url = std::env::var("SUI_RPC_URL")
-        .unwrap_or_else(|_| "wss://fullnode.testnet.sui.io:443".to_string());
-    let rpc_url = std::env::var("SUI_RPC_URL")
-        .unwrap_or_else(|_| "https://fullnode.testnet.sui.io:443".to_string());
-
-    info!("Connecting to Sui RPC: {}", rpc_url);
-
-    let client = SuiClientBuilder::default()
-        .ws_url(&ws_url)
-        .build(&rpc_url)
-        .await?;
+    let grpc_url = std::env::var("GRPC_URL").expect("GRPC_URL environment variable must be set");
 
     let (tx, mut rx) = mpsc::channel::<ProtocolEvent>(256);
 
-    let listener = EventListener::new(client, tx)?;
+    let listener = EventListener::new(&grpc_url, tx).await?;
     tokio::spawn(async move {
         if let Err(e) = listener.run().await {
             tracing::error!("Event listener failed: {}", e);
