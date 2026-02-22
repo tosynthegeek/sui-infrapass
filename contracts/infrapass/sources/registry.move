@@ -52,12 +52,13 @@ public struct AdminCap has key {
 public struct ProviderRegistered has copy, drop {
     provider_address: address,
     profile_id: ID,
+    metadata: String,
     timestamp: u64,
 }
 
 public struct ServiceCreated has copy, drop {
     service_id: ID,
-    provider_address: address,
+    provider: ID,
     service_type: String,
     metadata_uri: String,
     timestamp: u64,
@@ -146,6 +147,7 @@ public fun register_provider(
     event::emit(ProviderRegistered {
         provider_address: sender,
         profile_id: profile_id_inner,
+        metadata: string::utf8(metadata_uri),
         timestamp,
     });
 
@@ -192,7 +194,7 @@ public fun create_service(
 
     event::emit(ServiceCreated {
         service_id: service_id_inner,
-        provider_address: sender,
+        provider: provider_cap.profile_id,
         service_type: service.service_type,
         metadata_uri: service.metadata_uri,
         timestamp,

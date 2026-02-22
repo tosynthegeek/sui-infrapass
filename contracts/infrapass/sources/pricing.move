@@ -2,15 +2,12 @@ module infrapass::pricing;
 
 use infrapass::registry::{Self, ServiceListing, ProviderCap, ServiceRegistry};
 use std::string::{Self, String};
+use std::type_name::{Self, with_defining_ids};
 use sui::clock::{Self, Clock};
 use sui::event;
 
 const ENotAuthorized: u64 = 1;
 const EServiceNotActive: u64 = 2;
-
-const TIER_SUBSCRIPTION: u8 = 0;
-const TIER_QUOTA: u8 = 1;
-const TIER_USAGE_BASED: u8 = 2;
 
 public enum TierConfig has copy, drop, store {
     /// Unlimited requests for a fixed duration
@@ -23,9 +20,7 @@ public enum TierConfig has copy, drop, store {
         duration_ms: u64,
     },
     /// Pay per request (deposit-based or postpaid)
-    UsageBased {
-        price_per_unit: u64,
-    },
+    UsageBased {},
 }
 
 public struct PricingTier<phantom CoinType> has key, store {
@@ -45,7 +40,8 @@ public struct TierCreated has copy, drop {
     service_id: ID,
     tier_name: String,
     price: u64,
-    tier_type: u8,
+    inner: TierConfig,
+    coin_type: String,
     timestamp: u64,
 }
 
@@ -85,12 +81,6 @@ public fun create_pricing_tier<CoinType>(
     let tier_id = object::new(ctx);
     let tier_id_inner = object::uid_to_inner(&tier_id);
 
-    let tier_type = match (&inner) {
-        TierConfig::Subscription { .. } => TIER_SUBSCRIPTION,
-        TierConfig::Quota { .. } => TIER_QUOTA,
-        TierConfig::UsageBased { .. } => TIER_USAGE_BASED,
-    };
-
     let tier: PricingTier<CoinType> = PricingTier {
         id: tier_id,
         service_id,
@@ -102,6 +92,9 @@ public fun create_pricing_tier<CoinType>(
         created_at: timestamp,
     };
 
+    let ascii_name = type_name::with_defining_ids<CoinType>().into_string();
+    let coin_type_str = string::from_ascii(ascii_name);
+
     registry::add_tier_id(service, tier_id_inner, clock::timestamp_ms(clock));
 
     event::emit(TierCreated {
@@ -109,7 +102,8 @@ public fun create_pricing_tier<CoinType>(
         service_id,
         tier_name: tier.tier_name,
         price,
-        tier_type,
+        inner: tier.inner,
+        coin_type: coin_type_str,
         timestamp,
     });
 
@@ -125,7 +119,6 @@ entry fun create_pricing_tier_entry<CoinType>(
     tier_type: u8,
     duration_ms: Option<u64>,
     quota_limit: Option<u64>,
-    unit_price: Option<u64>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -137,9 +130,7 @@ entry fun create_pricing_tier_entry<CoinType>(
             quota_limit: *option::borrow(&quota_limit),
             duration_ms: *option::borrow(&duration_ms),
         },
-        2 => TierConfig::UsageBased {
-            price_per_unit: *option::borrow(&unit_price),
-        },
+        2 => TierConfig::UsageBased {},
         _ => abort ENotAuthorized,
     };
     let tier = create_pricing_tier<CoinType>(
@@ -296,6 +287,7 @@ public fun calculate_entitlement_details<CoinType>(
     current_time: u64,
     amount_paid: u64,
 ): (Option<u64>, Option<u64>) {
+    let price = tier.price;
     match (&tier.inner) {
         TierConfig::Subscription { duration_ms } => {
             let expires_at = current_time + *duration_ms;
@@ -305,8 +297,8 @@ public fun calculate_entitlement_details<CoinType>(
             let expires_at = current_time + *duration_ms;
             (option::some(expires_at), option::some(*quota_limit))
         },
-        TierConfig::UsageBased { price_per_unit } => {
-            let requests_available = amount_paid / *price_per_unit;
+        TierConfig::UsageBased {} => {
+            let requests_available = amount_paid / price;
 
             (option::none(), option::some(requests_available))
         },
