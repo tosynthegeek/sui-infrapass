@@ -1,6 +1,9 @@
 use anyhow::Result;
 use dotenvy::dotenv;
-use infrapass::events::{handlers::handle_event, listener::EventListener, types::ProtocolEvent};
+use infrapass::{
+    db::{create_pool, run_migrations},
+    events::{handlers::handle_event, listener::EventListener, types::ProtocolEvent},
+};
 use tokio::sync::mpsc;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -24,6 +27,11 @@ async fn main() -> Result<()> {
     info!("Starting Infrapass Event Listener");
 
     let grpc_url = std::env::var("GRPC_URL").expect("GRPC_URL environment variable must be set");
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    let pool = create_pool(&database_url).await?;
+
+    run_migrations(&pool).await?;
 
     let (tx, mut rx) = mpsc::channel::<ProtocolEvent>(256);
 

@@ -26,11 +26,11 @@ pub fn build_tier_config_args(
             ptb.pure(None::<u64>)?,
         )),
 
-        TierConfigInput::UsageBased { price_per_unit } => Ok((
+        TierConfigInput::UsageBased {} => Ok((
             ptb.pure(2u8)?,
             ptb.pure(None::<u64>)?,
             ptb.pure(None::<u64>)?,
-            ptb.pure(Some(price_per_unit))?,
+            ptb.pure(None::<u64>)?,
         )),
     }
 }

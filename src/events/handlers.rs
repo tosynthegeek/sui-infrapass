@@ -4,7 +4,6 @@ use crate::events::types::{EntitlementConfig, ProtocolEvent};
 
 pub async fn handle_event(event: ProtocolEvent) {
     match event {
-        // ── Registry ─────────────────────────────────────────────
         ProtocolEvent::ProviderRegistered(e) => {
             info!(
                 address = %e.provider_address,
@@ -19,7 +18,6 @@ pub async fn handle_event(event: ProtocolEvent) {
             let metadata_uri = String::from_utf8_lossy(&e.metadata_uri);
             info!(
                 service_id = ?e.service_id,
-                provider = %e.provider_address,
                 service_type = %service_type,
                 metadata_uri = %metadata_uri,
                 "Service created"
@@ -51,7 +49,6 @@ pub async fn handle_event(event: ProtocolEvent) {
             );
         }
 
-        // ── Pricing ───────────────────────────────────────────────
         ProtocolEvent::TierCreated(e) => {
             let name = String::from_utf8_lossy(&e.tier_name);
             info!(

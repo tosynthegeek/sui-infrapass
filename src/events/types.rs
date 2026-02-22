@@ -1,17 +1,20 @@
 use serde::{Deserialize, Serialize};
 use sui_types::{base_types::SuiAddress, id::ID};
 
+use crate::types::types::TierConfigInput;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderRegistered {
     pub provider_address: SuiAddress,
     pub profile_id: ID,
+    pub metadata: String,
     pub timestamp: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceCreated {
     pub service_id: ID,
-    pub provider_address: SuiAddress,
+    pub provider: ID,
     pub service_type: Vec<u8>,
     pub metadata_uri: Vec<u8>,
     pub timestamp: u64,
@@ -30,7 +33,8 @@ pub struct TierCreated {
     pub service_id: ID,
     pub tier_name: Vec<u8>,
     pub price: u64,
-    pub tier_type: u8,
+    pub inner: TierConfigInput,
+    pub coin_type: String,
     pub timestamp: u64,
 }
 
@@ -85,7 +89,7 @@ pub struct QuotaConsumed {
     pub timestamp: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProtocolEvent {
     // Registry
     ProviderRegistered(ProviderRegistered),

@@ -17,3 +17,5 @@ pub const MAINNET_USDT: &str = "375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d
 pub const TEST_WAL: &str = "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59";
 pub const TEST_USDC: &str = "dba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7";
 pub const TEST_USDT: &str = "375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068";
+
+pub const MIGRATIONS_PATH: &str = "src/db/migrations";

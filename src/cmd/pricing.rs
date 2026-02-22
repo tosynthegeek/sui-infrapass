@@ -47,10 +47,6 @@ pub enum PricingCommands {
         /// Quota (for subscription or PAYG)
         #[arg(long)]
         quota: Option<u64>,
-
-        /// Unit price (for PAYG)
-        #[arg(long)]
-        unit_price: Option<u64>,
     },
 
     /// Add tier to service
@@ -124,13 +120,12 @@ impl PricingCommands {
                 coin_type,
                 duration,
                 quota,
-                unit_price,
             } => {
                 let default_path = default_wallet_config()?;
                 let mut wallet = load_wallet_context(default_path)?;
                 let sender = wallet.active_address()?;
                 let service = ObjectID::from_hex_literal(&service_id)?;
-                let config = TierConfigInput::from_u8(tier, duration, quota, unit_price)?;
+                let config = TierConfigInput::from_u8(tier, duration, quota)?;
                 let tx_data = create_pricing_tier_tx(
                     &client,
                     sender,
