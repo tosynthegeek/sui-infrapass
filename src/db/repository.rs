@@ -1,15 +1,16 @@
+
 use std::sync::Arc;
 
 use anyhow::Result;
 use sqlx::PgPool;
 
 use crate::{
-    db::models::{BlockchainEvent, PricingTier, Provider, Service, TierType},
-    events::types::ProtocolEvent,
+    db::models::{BlockchainEvent, Entitlement, PricingTier, Provider, Service, TierType},
+    events::types::{EntitlementConfig, EntitlementPurchased, ProtocolEvent},
 };
 
 pub struct Repository {
-    pool: Arc<PgPool>,
+    pool: Arc<PgPool>
 }
 
 impl Repository {
@@ -23,7 +24,7 @@ impl Repository {
 
     pub async fn create_provider(
         &self,
-        profile_id: String,
+        profile_id: &str,
         provider_address: String,
         metadata: &str,
     ) -> Result<Provider> {
@@ -39,43 +40,42 @@ impl Repository {
         .bind(profile_id)
         .bind(provider_address)
         .bind(metadata)
-        .fetch_one(&*self.pool)
+        .fetch_one(self.pool())
         .await?;
 
         Ok(provider)
     }
 
     pub async fn get_provider(&self, profile_id: &str) -> Result<Option<Provider>> {
-        let provider = sqlx::query_as!(
-            Provider,
-            "SELECT * FROM providers WHERE profile_id = $1",
-            profile_id
+        let provider = sqlx::query_as(
+            r#"
+            SELECT * FROM providers WHERE profile_id = $1"#,
         )
-        .fetch_optional(&*self.pool)
+        .bind(profile_id)
+        .fetch_optional(self.pool())
         .await?;
 
         Ok(provider)
     }
 
     pub async fn get_provider_by_address(&self, address: &str) -> Result<Option<Provider>> {
-        let provider = sqlx::query_as!(
-            Provider,
-            "SELECT * FROM providers WHERE provider_address = $1",
-            address
+        let provider = sqlx::query_as(
+            r#"
+            SELECT * FROM providers WHERE provider_address = $1"#,
         )
-        .fetch_optional(&*self.pool)
+        .bind(address)
+        .fetch_optional(self.pool())
         .await?;
 
         Ok(provider)
     }
 
     pub async fn list_providers(&self, limit: i64) -> Result<Vec<Provider>> {
-        let providers = sqlx::query_as!(
-            Provider,
-            "SELECT * FROM providers WHERE is_active = true ORDER BY created_at DESC LIMIT $1",
-            limit
+        let providers = sqlx::query_as(
+            r#"SELECT * FROM providers WHERE is_active = true ORDER BY created_at DESC LIMIT $1"#,
         )
-        .fetch_all(&*self.pool)
+        .bind(limit)
+        .fetch_all(self.pool())
         .await?;
 
         Ok(providers)
@@ -88,8 +88,7 @@ impl Repository {
         service_type: &str,
         metadata_uri: Option<String>,
     ) -> Result<Service> {
-        let service = sqlx::query_as!(
-            Service,
+        let service = sqlx::query_as(
             r#"
             INSERT INTO services (service_id, provider_id, service_type, metadata_uri)
             VALUES ($1, $2, $3, $4)
@@ -97,51 +96,63 @@ impl Repository {
             SET metadata_uri = EXCLUDED.metadata_uri, updated_at = NOW()
             RETURNING *
             "#,
-            service_id,
-            provider_id,
-            service_type,
-            metadata_uri
         )
-        .fetch_one(&*self.pool)
+        .bind(service_id)
+        .bind(provider_id)
+        .bind(service_type)
+        .bind(metadata_uri)
+        .fetch_one(self.pool())
         .await?;
 
         Ok(service)
     }
 
     pub async fn get_service(&self, service_id: &str) -> Result<Option<Service>> {
-        let service = sqlx::query_as!(
-            Service,
-            "SELECT * FROM services WHERE service_id = $1",
-            service_id
-        )
-        .fetch_optional(&*self.pool)
-        .await?;
+        let service = sqlx::query_as("SELECT * FROM services WHERE service_id = $1")
+            .bind(service_id)
+            .fetch_optional(self.pool())
+            .await?;
 
         Ok(service)
     }
 
     pub async fn list_services_by_provider(&self, provider_id: &str) -> Result<Vec<Service>> {
-        let services = sqlx::query_as!(
-            Service,
+        let services = sqlx::query_as(
             "SELECT * FROM services WHERE provider_id = $1 ORDER BY created_at DESC",
-            provider_id
         )
-        .fetch_all(&*self.pool)
+        .bind(provider_id)
+        .fetch_all(self.pool())
         .await?;
 
         Ok(services)
     }
 
     pub async fn list_services(&self, limit: i64) -> Result<Vec<Service>> {
-        let services = sqlx::query_as!(
-            Service,
+        let services = sqlx::query_as(
             "SELECT * FROM services WHERE is_active = true ORDER BY created_at DESC LIMIT $1",
-            limit
         )
-        .fetch_all(&*self.pool)
+        .bind(limit)
+        .fetch_all(self.pool())
         .await?;
 
         Ok(services)
+    }
+
+    pub async fn update_service_metadata(&self, service_id: &str, metadata_uri: &str) -> Result<Service> {
+        let service = sqlx::query_as(
+            r#"
+            UPDATE services 
+            SET metadata_uri = $1, updated_at = NOW() 
+            WHERE service_id = $2 
+            RETURNING *
+            "#,
+        )
+        .bind(metadata_uri)
+        .bind(service_id)
+        .fetch_one(self.pool())
+        .await?;
+
+        Ok(service)
     }
 
     pub async fn create_tier(
@@ -179,15 +190,14 @@ impl Repository {
         .bind(tier_type)
         .bind(duration_ms)
         .bind(quota_limit)
-        .fetch_one(&*self.pool)
+        .fetch_one(self.pool())
         .await?;
 
         Ok(tier)
     }
 
     pub async fn get_tier(&self, tier_id: &str) -> Result<Option<PricingTier>> {
-        let tier = sqlx::query_as!(
-            PricingTier,
+        let tier = sqlx::query_as(
             r#"
             SELECT 
                 tier_id, service_id, tier_name, price, coin_type,
@@ -196,17 +206,16 @@ impl Repository {
             FROM pricing_tiers 
             WHERE tier_id = $1
             "#,
-            tier_id
         )
-        .fetch_optional(&*self.pool)
+        .bind(tier_id)
+        .fetch_optional(self.pool())
         .await?;
 
         Ok(tier)
     }
 
     pub async fn list_tiers_by_service(&self, service_id: &str) -> Result<Vec<PricingTier>> {
-        let tiers = sqlx::query_as!(
-            PricingTier,
+        let tiers = sqlx::query_as(
             r#"
             SELECT 
                 tier_id, service_id, tier_name, price, coin_type,
@@ -216,12 +225,159 @@ impl Repository {
             WHERE service_id = $1 AND is_active = true
             ORDER BY price ASC
             "#,
-            service_id
         )
-        .fetch_all(&*self.pool)
+        .bind(service_id)
+        .fetch_all(self.pool())
         .await?;
 
         Ok(tiers)
+    }
+
+    pub async fn list_tiers(&self, limit: i64) -> Result<Vec<PricingTier>> {
+        let tiers = sqlx::query_as(
+            r#"
+            SELECT 
+                tier_id, service_id, tier_name, price, coin_type,
+                tier_type as "tier_type!: TierType",
+                duration_ms, quota_limit, is_active, created_at, updated_at
+            FROM pricing_tiers 
+            WHERE is_active = true
+            ORDER BY created_at DESC
+            LIMIT $1
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?;
+
+        Ok(tiers)
+    }
+
+    pub async fn update_tier_price(&self, tier_id: &str, new_price: i64) -> Result<PricingTier> {
+        let tier = sqlx::query_as(
+            r#"
+            UPDATE pricing_tiers 
+            SET price = $1, updated_at = NOW() 
+            WHERE tier_id = $2 
+            RETURNING 
+                tier_id, service_id, tier_name, price, coin_type,
+                tier_type as "tier_type!: TierType",
+                duration_ms, quota_limit, is_active, created_at, updated_at
+            "#,
+        )
+        .bind(new_price)
+        .bind(tier_id)
+        .fetch_one(self.pool())
+        .await?;
+
+        Ok(tier)
+    }
+
+    pub async fn deactivate_tier(&self, tier_id: &str) -> Result<PricingTier> {
+        let tier = sqlx::query_as(
+            r#"
+            UPDATE pricing_tiers 
+            SET is_active = false, updated_at = NOW() 
+            WHERE tier_id = $1 
+            RETURNING 
+                tier_id, service_id, tier_name, price, coin_type,
+                tier_type as "tier_type!: TierType",
+                duration_ms, quota_limit, is_active, created_at, updated_at
+            "#,
+        )
+        .bind(tier_id)
+        .fetch_one(self.pool())
+        .await?;
+
+        Ok(tier)
+    }
+
+    pub async fn reactivate_tier(&self, tier_id: &str) -> Result<PricingTier> {
+        let tier = sqlx::query_as(
+            r#"
+            UPDATE pricing_tiers 
+            SET is_active = true, updated_at = NOW() 
+            WHERE tier_id = $1 
+            RETURNING 
+                tier_id, service_id, tier_name, price, coin_type,
+                tier_type as "tier_type!: TierType",
+                duration_ms, quota_limit, is_active, created_at, updated_at
+            "#,
+        )
+        .bind(tier_id)
+        .fetch_one(self.pool())
+        .await?;
+
+        Ok(tier)
+    }
+
+    pub async fn create_entitlement(
+        &self,
+        event: &EntitlementPurchased,
+    ) -> Result<Entitlement> {
+        let entitlement_id = event.entitlement_id.bytes.to_string();
+        let service_id = event.service_id.bytes.to_string();
+        let tier_id = event.tier_id.bytes.to_string();
+    
+        let created_at = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(
+            event.timestamp as i64
+        )
+        .ok_or_else(|| anyhow::anyhow!("Invalid timestamp"))?;
+    
+        let (expires_at, quota, units) = match &event.inner {
+            &EntitlementConfig::Subscription { expires_at } => {
+                (
+                    Some(
+                        chrono::DateTime::<chrono::Utc>::from_timestamp_millis(
+                            expires_at as i64
+                        )
+                        .ok_or_else(|| anyhow::anyhow!("Invalid expires_at"))?
+                    ),
+                    None,
+                    0i64,
+                )
+            }
+    
+            EntitlementConfig::Quota { expires_at, quota } => {
+                (
+                    Some(
+                        chrono::DateTime::<chrono::Utc>::from_timestamp_millis(
+                            *expires_at as i64
+                        )
+                        .ok_or_else(|| anyhow::anyhow!("Invalid expires_at"))?
+                    ),
+                    Some(*quota as i64),
+                    0i64,
+                )
+            }
+    
+            EntitlementConfig::UsageBased { units } => {
+                (None, None, *units as i64)
+            }
+        };
+    
+        let entitlement = sqlx::query_as::<_, Entitlement>(
+            r#"
+            INSERT INTO entitlements
+            (entitlement_id, buyer, service_id, tier_id, price_paid, expires_at, quota, units, created_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            ON CONFLICT (entitlement_id) DO NOTHING
+            RETURNING *
+            "#,
+        )
+        .bind(&entitlement_id)
+        .bind(&event.buyer)
+        .bind(&service_id)
+        .bind(&tier_id)
+        .bind(event.price_paid as i64)
+        .bind(expires_at)
+        .bind(quota)
+        .bind(units)
+        .bind(created_at)
+        .fetch_one(self.pool())
+        .await?;
+    
+        Ok(entitlement)
     }
 
     pub async fn store_event(
@@ -233,24 +389,24 @@ impl Repository {
         match event {
             ProtocolEvent::ProviderRegistered(e) => {
                 let prof_id = e.profile_id.bytes.to_string();
-                sqlx::query!(
+                sqlx::query(
                     r#"
                     INSERT INTO blockchain_events 
                     (checkpoint_number, transaction_digest, event_type, package_id, module, event_data, provider_id)
                     VALUES ($1, $2, $3, $4, $5, $6, $7)
                     "#,
-                    checkpoint as i64,
-                    tx_digest,
-                    "ProviderRegistered",
-                    crate::utils::constants::PACKAGE_ID,
-                    "registry",
-                    serde_json::to_value(e)?,
-                    prof_id
                 )
-                .execute(&*self.pool)
+                .bind(checkpoint as i64)
+                .bind(tx_digest)
+                .bind("ProviderRegistered")
+                .bind(crate::utils::constants::PACKAGE_ID)
+                .bind("registry")
+                .bind(serde_json::to_value(e)?)
+                .bind(&prof_id)
+                .execute(self.pool())
                 .await?;
 
-                self.create_provider(prof_id, e.provider_address.to_string(), &e.metadata)
+                self.create_provider(&prof_id, e.provider_address.to_string(), &e.metadata)
                     .await?;
             }
 
@@ -260,22 +416,23 @@ impl Repository {
                 let prof_id = e.provider.bytes.to_string();
                 let serv = e.service_id.bytes.to_string();
 
-                sqlx::query!(
+                sqlx::query(
                     r#"
                     INSERT INTO blockchain_events 
                     (checkpoint_number, transaction_digest, event_type, package_id, module, event_data, provider_id, service_id)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     "#,
-                    checkpoint as i64,
-                    tx_digest,
-                    "ServiceCreated",
-                    crate::utils::constants::PACKAGE_ID,
-                    "registry",
-                    serde_json::to_value(e)?,
-                    prof_id,
-                    serv
+                    
                 )
-                .execute(&*self.pool)
+                .bind(checkpoint as i64)
+                .bind(tx_digest)
+                .bind("ServiceCreated")
+                .bind(crate::utils::constants::PACKAGE_ID)
+                .bind("registry")
+                .bind(serde_json::to_value(e)?)
+                .bind(&prof_id)
+                .bind(&serv)
+                .execute(self.pool())
                 .await?;
 
                 self.create_service(&serv, &prof_id, &service_type, Some(metadata_uri))
@@ -288,22 +445,22 @@ impl Repository {
                 let serv = e.service_id.bytes.to_string();
                 let coin_type = &e.coin_type;
 
-                sqlx::query!(
+                sqlx::query(
                     r#"
                     INSERT INTO blockchain_events 
                     (checkpoint_number, transaction_digest, event_type, package_id, module, event_data, service_id, tier_id)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     "#,
-                    checkpoint as i64,
-                    tx_digest,
-                    "TierCreated",
-                    crate::utils::constants::PACKAGE_ID,
-                    "pricing",
-                    serde_json::to_value(e)?,
-                    serv,
-                    tier_id
                 )
-                .execute(&*self.pool)
+                .bind(checkpoint as i64)
+                .bind(tx_digest)
+                .bind("TierCreated")
+                .bind(crate::utils::constants::PACKAGE_ID)
+                .bind("pricing")
+                .bind(serde_json::to_value(e)?)
+                .bind(&serv)
+                .bind(&tier_id)
+                .execute(self.pool())
                 .await?;
 
                 self.create_tier(
@@ -320,20 +477,20 @@ impl Repository {
             }
 
             _ => {
-                sqlx::query!(
+                sqlx::query(
                     r#"
                     INSERT INTO blockchain_events 
                     (checkpoint_number, transaction_digest, event_type, package_id, module, event_data)
                     VALUES ($1, $2, $3, $4, $5, $6)
                     "#,
-                    checkpoint as i64,
-                    tx_digest,
-                    format!("{:?}", event),
-                    crate::utils::constants::PACKAGE_ID,
-                    "unknown",
-                    serde_json::to_value(event)?
                 )
-                .execute(&*self.pool)
+                .bind(checkpoint as i64)
+                .bind(tx_digest)
+                .bind(format!("{:?}", event))
+                .bind(crate::utils::constants::PACKAGE_ID,)
+                .bind("unknown")
+                .bind(serde_json::to_value(event)?)
+                .execute(self.pool())
                 .await?;
             }
         }
@@ -346,7 +503,7 @@ impl Repository {
             r#"SELECT * FROM blockchain_events ORDER BY event_time DESC LIMIT $1"#,
         )
         .bind(limit)
-        .fetch_all(&*self.pool)
+        .fetch_all(self.pool())
         .await?;
 
         Ok(events)

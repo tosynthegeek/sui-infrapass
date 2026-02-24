@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use dotenvy::dotenv;
 use infrapass::{
-    db::{create_pool, run_migrations},
-    events::{handlers::handle_event, listener::EventListener, types::ProtocolEvent},
+    db::{create_pool, repository::Repository, run_migrations},
+    events::{listener::EventListener, types::EventPayload, worker::EventWorker},
 };
-use tokio::sync::mpsc;
+use tokio::{signal, sync::mpsc};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -33,19 +35,44 @@ async fn main() -> Result<()> {
 
     run_migrations(&pool).await?;
 
-    let (tx, mut rx) = mpsc::channel::<ProtocolEvent>(256);
+    let (tx, rx) = mpsc::channel::<EventPayload>(256);
 
     let listener = EventListener::new(&grpc_url, tx).await?;
-    tokio::spawn(async move {
+    let pool = Arc::new(pool);
+    let repo = Repository::new(pool);
+    let worker = EventWorker::new(repo, rx);
+    let listener_handle = tokio::spawn(async move {
         if let Err(e) = listener.run().await {
             tracing::error!("Event listener failed: {}", e);
         }
     });
 
     info!("Processing events...");
-    while let Some(event) = rx.recv().await {
-        handle_event(event).await;
+    let worker_handle = tokio::spawn(async move {
+        if let Err(e) = worker.run().await {
+            tracing::error!("Event worker failed: {}", e);
+        }
+    });
+
+    tokio::select! {
+        _ = signal::ctrl_c() => {
+            info!("Received shutdown signal");
+        }
+        result = listener_handle => {
+            match result {
+                Ok(_) => info!("Listener task completed"),
+                Err(e) => tracing::error!("Listener task panicked: {}", e),
+            }
+        }
+        result = worker_handle => {
+            match result {
+                Ok(_) => info!("Worker task completed"),
+                Err(e) => tracing::error!("Worker task panicked: {}", e),
+            }
+        }
     }
+
+    info!("Shutting down gracefully...");
 
     Ok(())
 }

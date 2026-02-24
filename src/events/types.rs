@@ -90,6 +90,13 @@ pub struct QuotaConsumed {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventPayload {
+    pub event: ProtocolEvent,
+    pub tx_digest: Option<String>,
+    pub checkpoint: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProtocolEvent {
     // Registry
     ProviderRegistered(ProviderRegistered),
@@ -100,11 +107,11 @@ pub enum ProtocolEvent {
     TierPriceUpdated(TierPriceUpdated),
     TierDeactivated(TierDeactivated),
     TierReactivated(TierReactivated),
-    TierAddedToService(TierAddedToService),
-    TierRemovedFromService(TierRemovedFromService),
+    // TierAddedToService(TierAddedToService),
+    // TierRemovedFromService(TierRemovedFromService),
     // Payments
     EntitlementPurchased(EntitlementPurchased),
-    QuotaConsumed(QuotaConsumed),
+    // QuotaConsumed(QuotaConsumed),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

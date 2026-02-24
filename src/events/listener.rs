@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use crate::{
     events::{
         metrics::EventMetrics,
-        types::{ProtocolEvent, ProviderRegistered, ServiceCreated},
+        types::{EventPayload, ProtocolEvent, ProviderRegistered, ServiceCreated},
     },
     utils::constants::PACKAGE_ID,
 };
@@ -34,12 +34,12 @@ pub struct EventListener {
     pub client: Client,
     pub package_id: String,
     /// Sends parsed events to whoever is listening
-    pub event_tx: mpsc::Sender<ProtocolEvent>,
+    pub event_tx: mpsc::Sender<EventPayload>,
     metrics: Arc<RwLock<EventMetrics>>,
 }
 
 impl EventListener {
-    pub async fn new(grpc_url: &str, event_tx: mpsc::Sender<ProtocolEvent>) -> Result<Self> {
+    pub async fn new(grpc_url: &str, event_tx: mpsc::Sender<EventPayload>) -> Result<Self> {
         let client = Client::new(grpc_url.to_string())?;
         let sui_client = SuiClientBuilder::default()
             .build(grpc_url.to_string())
@@ -164,7 +164,13 @@ impl EventListener {
                                 metrics.total_events_processed += 1;
                             }
 
-                            if self.event_tx.send(parsed).await.is_err() {
+                            let payload = EventPayload {
+                                event: parsed,
+                                tx_digest: tx.digest.clone(),
+                                checkpoint: checkpoint_cursor.unwrap_or(0),
+                            };
+
+                            if self.event_tx.send(payload).await.is_err() {
                                 warn!("Event receiver dropped, shutting down");
                                 return;
                             }
@@ -213,16 +219,16 @@ impl EventListener {
                     bcs::from_bytes(bcs_bytes).ok()?;
                 Some(ProtocolEvent::ServiceUpdated(inner))
             }
-            "registry::TierAddedToService" => {
-                let inner: crate::events::types::TierAddedToService =
-                    bcs::from_bytes(bcs_bytes).ok()?;
-                Some(ProtocolEvent::TierAddedToService(inner))
-            }
-            "registry::TierRemovedFromService" => {
-                let inner: crate::events::types::TierRemovedFromService =
-                    bcs::from_bytes(bcs_bytes).ok()?;
-                Some(ProtocolEvent::TierRemovedFromService(inner))
-            }
+            // "registry::TierAddedToService" => {
+            //     let inner: crate::events::types::TierAddedToService =
+            //         bcs::from_bytes(bcs_bytes).ok()?;
+            //     Some(ProtocolEvent::TierAddedToService(inner))
+            // }
+            // "registry::TierRemovedFromService" => {
+            //     let inner: crate::events::types::TierRemovedFromService =
+            //         bcs::from_bytes(bcs_bytes).ok()?;
+            //     Some(ProtocolEvent::TierRemovedFromService(inner))
+            // }
             "pricing::TierCreated" => {
                 let inner: crate::events::types::TierCreated = bcs::from_bytes(bcs_bytes).ok()?;
                 Some(ProtocolEvent::TierCreated(inner))
@@ -247,10 +253,10 @@ impl EventListener {
                     bcs::from_bytes(bcs_bytes).ok()?;
                 Some(ProtocolEvent::EntitlementPurchased(inner))
             }
-            "payments::QuotaConsumed" => {
-                let inner: crate::events::types::QuotaConsumed = bcs::from_bytes(bcs_bytes).ok()?;
-                Some(ProtocolEvent::QuotaConsumed(inner))
-            }
+            // "payments::QuotaConsumed" => {
+            //     let inner: crate::events::types::QuotaConsumed = bcs::from_bytes(bcs_bytes).ok()?;
+            //     Some(ProtocolEvent::QuotaConsumed(inner))
+            // }
             _ => {
                 warn!("Unhandled event type: {}", label);
                 None
