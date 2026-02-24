@@ -2,7 +2,7 @@ module infrapass::pricing;
 
 use infrapass::registry::{Self, ServiceListing, ProviderCap, ServiceRegistry};
 use std::string::{Self, String};
-use std::type_name::{Self, with_defining_ids};
+use std::type_name;
 use sui::clock::{Self, Clock};
 use sui::event;
 
