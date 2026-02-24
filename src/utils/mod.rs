@@ -1,5 +1,7 @@
-use sui_json_rpc_types::SuiTransactionBlockResponse;
-use tracing::info;
+use sui_json_rpc_types::{
+    SuiExecutionStatus, SuiTransactionBlockEffectsAPI, SuiTransactionBlockResponse,
+};
+use tracing::{error, info};
 
 pub mod address;
 pub mod coin;
@@ -16,8 +18,21 @@ pub fn handle_response(resp: &SuiTransactionBlockResponse) {
             );
         }
         Some(false) => {
-            println!("Transaction failed");
+            if let Some(effects) = &resp.effects {
+                let status = effects.status();
+                match status {
+                    SuiExecutionStatus::Failure { error } => {
+                        error!("Transaction failed with error: {:?}", error);
+                    }
+                    _ => {
+                        error!("Transaction failed for unknown reason: {:?}", status);
+                    }
+                }
+            } else {
+                error!("Transaction failed and no effects were returned");
+            }
         }
+
         None => {
             println!("No execution status returned");
         }
