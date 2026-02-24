@@ -74,7 +74,7 @@ pub struct TierRemovedFromService {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EntitlementPurchased {
     pub entitlement_id: ID,
-    pub buyer: String,
+    pub buyer: SuiAddress,
     pub service_id: ID,
     pub tier_id: ID,
     pub price_paid: u64,

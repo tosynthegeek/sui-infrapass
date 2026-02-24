@@ -7,12 +7,11 @@ use crate::types::types::TierConfigInput;
 pub fn build_tier_config_args(
     ptb: &mut ProgrammableTransactionBuilder,
     config: TierConfigInput,
-) -> Result<(Argument, Argument, Argument, Argument)> {
+) -> Result<(Argument, Argument, Argument)> {
     match config {
         TierConfigInput::Subscription { duration_ms } => Ok((
             ptb.pure(0u8)?,
             ptb.pure(Some(duration_ms))?,
-            ptb.pure(None::<u64>)?,
             ptb.pure(None::<u64>)?,
         )),
 
@@ -23,12 +22,10 @@ pub fn build_tier_config_args(
             ptb.pure(1u8)?,
             ptb.pure(Some(duration_ms))?,
             ptb.pure(Some(quota_limit))?,
-            ptb.pure(None::<u64>)?,
         )),
 
         TierConfigInput::UsageBased {} => Ok((
             ptb.pure(2u8)?,
-            ptb.pure(None::<u64>)?,
             ptb.pure(None::<u64>)?,
             ptb.pure(None::<u64>)?,
         )),

@@ -44,3 +44,6 @@ pub enum Commands {
     #[command(subcommand)]
     Query(QueryCommands),
 }
+
+// infrapass-cli provider register metadata_uri "https://example.com/provider/metadata.json"
+// infrapass-cli provider create-service --service-type "compute" --metadata-uri "https://example.com/service/metadata.json"

@@ -16,7 +16,10 @@ use sui_types::{
 use crate::{
     transactions::provider::ProviderState,
     types::{coin::CoinType, types::TierInfo},
-    utils::coin::{extract_coin_type_from_tier_type, extract_price_from_content},
+    utils::{
+        coin::{extract_coin_type_from_tier_type, extract_price_from_content},
+        constants::PACKAGE_ID,
+    },
 };
 
 #[async_trait]
@@ -91,11 +94,15 @@ impl SuiClientExt for SuiClient {
         let mut cap = None;
         let mut service_ids = vec![];
 
+        let expected_profile_type = format!("{}::registry::ProviderProfile", PACKAGE_ID);
+
+        let expected_cap_type = format!("{}::registry::ProviderCap", PACKAGE_ID);
+
         for obj in objects.data {
             let data = obj.data.unwrap();
             let type_str = data.type_.unwrap().to_string();
 
-            if type_str.contains("ProviderProfile") {
+            if type_str == expected_profile_type {
                 profile = Some(data.object_id);
                 if let Some(content) = data.content {
                     if let Some(obj) = content.try_into_move() {
@@ -116,7 +123,7 @@ impl SuiClientExt for SuiClient {
                 }
             }
 
-            if type_str.contains("ProviderCap") {
+            if type_str == expected_cap_type {
                 cap = Some(data.object_id);
             }
         }

@@ -47,6 +47,14 @@ impl TierConfigInput {
         }
     }
 
+    pub fn as_tier_type_string(&self) -> String {
+        match self {
+            TierConfigInput::Subscription { .. } => "subscription".to_string(),
+            TierConfigInput::Quota { .. } => "quota".to_string(),
+            TierConfigInput::UsageBased {} => "usage_based".to_string(),
+        }
+    }
+
     pub fn duration(&self) -> Option<u64> {
         match self {
             TierConfigInput::Subscription { duration_ms } => Some(*duration_ms),

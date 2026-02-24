@@ -178,7 +178,7 @@ impl Repository {
                 updated_at = NOW()
             RETURNING 
                 tier_id, service_id, tier_name, price, coin_type,
-                tier_type as "tier_type!: TierType",
+                tier_type,
                 duration_ms, quota_limit, is_active, created_at, updated_at
             "#,
         )
@@ -201,7 +201,7 @@ impl Repository {
             r#"
             SELECT 
                 tier_id, service_id, tier_name, price, coin_type,
-                tier_type as "tier_type!: TierType",
+                tier_type,
                 duration_ms, quota_limit, is_active, created_at, updated_at
             FROM pricing_tiers 
             WHERE tier_id = $1
@@ -219,7 +219,7 @@ impl Repository {
             r#"
             SELECT 
                 tier_id, service_id, tier_name, price, coin_type,
-                tier_type as "tier_type!: TierType",
+                tier_type,
                 duration_ms, quota_limit, is_active, created_at, updated_at
             FROM pricing_tiers 
             WHERE service_id = $1 AND is_active = true
@@ -238,7 +238,7 @@ impl Repository {
             r#"
             SELECT 
                 tier_id, service_id, tier_name, price, coin_type,
-                tier_type as "tier_type!: TierType",
+                tier_type,
                 duration_ms, quota_limit, is_active, created_at, updated_at
             FROM pricing_tiers 
             WHERE is_active = true
@@ -261,7 +261,7 @@ impl Repository {
             WHERE tier_id = $2 
             RETURNING 
                 tier_id, service_id, tier_name, price, coin_type,
-                tier_type as "tier_type!: TierType",
+                tier_type,
                 duration_ms, quota_limit, is_active, created_at, updated_at
             "#,
         )
@@ -281,7 +281,7 @@ impl Repository {
             WHERE tier_id = $1 
             RETURNING 
                 tier_id, service_id, tier_name, price, coin_type,
-                tier_type as "tier_type!: TierType",
+                tier_type,
                 duration_ms, quota_limit, is_active, created_at, updated_at
             "#,
         )
@@ -300,7 +300,7 @@ impl Repository {
             WHERE tier_id = $1 
             RETURNING 
                 tier_id, service_id, tier_name, price, coin_type,
-                tier_type as "tier_type!: TierType",
+                tier_type,
                 duration_ms, quota_limit, is_active, created_at, updated_at
             "#,
         )
@@ -366,7 +366,7 @@ impl Repository {
             "#,
         )
         .bind(&entitlement_id)
-        .bind(&event.buyer)
+        .bind(&event.buyer.to_string())
         .bind(&service_id)
         .bind(&tier_id)
         .bind(event.price_paid as i64)
