@@ -27,6 +27,12 @@ pub trait ObjectIDExt {
         client: &SuiClient,
         ptb: &mut ProgrammableTransactionBuilder,
     ) -> Result<Argument>;
+
+    async fn to_receiving_ptb_arg(
+        &self,
+        client: &SuiClient,
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<Argument>;
 }
 
 #[async_trait]
@@ -104,5 +110,22 @@ impl ObjectIDExt for ObjectID {
             initial_shared_version,
             mutability: SharedObjectMutability::Immutable,
         })?)
+    }
+
+    async fn to_receiving_ptb_arg(
+        &self,
+        client: &SuiClient,
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<Argument> {
+        let obj = client
+            .read_api()
+            .get_object_with_options(*self, SuiObjectDataOptions::new().with_owner())
+            .await?
+            .data
+            .ok_or_else(|| anyhow!("Object not found"))?;
+
+        let obj_ref = obj.object_ref();
+
+        Ok(ptb.obj(ObjectArg::Receiving(obj_ref))?)
     }
 }
