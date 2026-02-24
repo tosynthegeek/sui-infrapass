@@ -8,7 +8,11 @@ use sui_types::{
 };
 
 use crate::{
-    client::client_ext::SuiClientExt, ptb::{clock::clock_arg, object_ext::ObjectIDExt, tier_config::build_tier_config_args}, transactions::provider::get_provider_state, types::{coin::CoinType, types::TierConfigInput}, utils::constants::{PACKAGE_ID, REGISTRY_ID}
+    client::client_ext::SuiClientExt,
+    ptb::{clock::clock_arg, object_ext::ObjectIDExt, tier_config::build_tier_config_args},
+    transactions::provider::get_provider_state,
+    types::{coin::CoinType, types::TierConfigInput},
+    utils::constants::{PACKAGE_ID, REGISTRY_ID},
 };
 
 pub async fn create_pricing_tier_tx(
@@ -38,8 +42,7 @@ pub async fn create_pricing_tier_tx(
 
     let clock_arg = clock_arg(client, &mut ptb).await?;
 
-    let (tier_type_arg, duration_arg, quota_arg, unit_price_arg) =
-        build_tier_config_args(&mut ptb, config)?;
+    let (tier_type_arg, duration_arg, quota_arg) = build_tier_config_args(&mut ptb, config)?;
 
     let name_arg = ptb.pure(tier_name.into_bytes())?;
     let price_arg = ptb.pure(price)?;
@@ -60,7 +63,6 @@ pub async fn create_pricing_tier_tx(
             tier_type_arg,
             duration_arg,
             quota_arg,
-            unit_price_arg,
             clock_arg,
         ],
     ));
