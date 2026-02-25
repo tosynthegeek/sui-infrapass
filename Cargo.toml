@@ -4,17 +4,20 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+axum = { version = "0.7", features = ["macros"] }
 async-trait = "0.1"
 bcs = { version = "0.1.6" }
 clap = { version = "4.5", features = ["derive"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "json", "migrate"] }
 chrono = { version = "0.4", features = ["serde"] }
+config = "0.14"
 dotenvy = "0.15"
+moka = { version = "0.12.13", features = ["future"] }
 futures = "0.3.31"
 tracing = {version = "0.1.37", features = ["log", "std", "attributes"] }
 tracing-appender = "0.2.2"
 tracing-opentelemetry = "0.32.0"
-tracing-subscriber = { version = "0.3.17", features = ["fmt", "env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = ["fmt", "env-filter", "json"] }
 sui_sdk = { git = "https://github.com/mystenlabs/sui", package = "sui-sdk"}
 sui-keys = { git = "https://github.com/MystenLabs/sui", package = "sui-keys" }
 sui-types = { git = "https://github.com/MystenLabs/sui", package = "sui-types" }
@@ -24,13 +27,26 @@ sui_transaction_builder = { git = "https://github.com/MystenLabs/sui", package =
 sui-grpc = { git = "https://github.com/MystenLabs/sui-rust-sdk", package = "sui-rpc" }
 shared-crypto = { git = "https://github.com/MystenLabs/sui", package = "shared-crypto" }
 tokio = { version = "1.2", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 anyhow = "1.0"
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
+once_cell = "1"
 serde = "1.0.118"
 serde_json = "1.0.61"
 tonic = "0.14.4"
 prost = "0.14.3"
 prost-types = "0.14.3"
 bytes = "1.7"
+prometheus = { version = "0.13", features = ["process"] }
+axum-prometheus = "0.6"
+hex = "0.4.3"
+sha2 = "0.10.9"
+hmac = "0.12.1"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "timeout", "cors"] }
+hyper = { version = "1", features = ["full"] }
+redis = { version = "1.0", features = ["tokio-comp", "aio"] }
 
 [build-dependencies]
 tonic-build = "0.14.4"
@@ -47,3 +63,8 @@ path = "src/bin/cli.rs"
 [[bin]]
 name = "infrapass-server"
 path = "src/bin/server.rs"
+
+
+[[bin]]
+name = "infrapass-sidecar"
+path = "src/bin/sidecar.rs"
