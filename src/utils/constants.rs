@@ -19,3 +19,27 @@ pub const TEST_USDC: &str = "dba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7
 pub const TEST_USDT: &str = "375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068";
 
 pub const MIGRATIONS_PATH: &str = "src/db/migrations";
+
+pub const LUA_ATOMIC_CHECK_AND_DECREMENT: &str = r#"
+    local quota_key = KEYS[1]
+    local cost = tonumber(ARGV[1])
+    local tier_type = tonumber(ARGV[2])
+
+    if tier_type == 0 then
+        return 0
+    end
+
+    if tier_type == 2 or tier_type == 3 then
+        local current = redis.call('GET', quota_key)
+        if current == false then
+            return -2 
+        end
+        current = tonumber(current)
+        if current < cost then
+            return -1
+        end
+        return redis.call('DECRBY', quota_key, cost)
+    end
+
+    return -3
+"#;
