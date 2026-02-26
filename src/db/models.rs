@@ -39,24 +39,18 @@ pub struct PricingTier {
     pub price: i64,
     pub coin_type: String,
     pub tier_type: TierType,
-    pub duration_ms: Option<i64>,
+    pub expires_at: Option<i64>,
     pub quota_limit: Option<i64>,
     pub is_active: Option<bool>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
-impl PricingTier {
-    pub fn duration_days(&self) -> Option<f64> {
-        self.duration_ms
-            .map(|ms| ms as f64 / (1000.0 * 60.0 * 60.0 * 24.0))
-    }
-}
-
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct Entitlement {
     pub entitlement_id: String,
     pub buyer: String,
+    pub provider_id: String,
     pub service_id: String,
     pub tier_id: String,
     pub price_paid: i64,

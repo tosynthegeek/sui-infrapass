@@ -5,8 +5,8 @@ use crate::{db::models::TierType, types::coin::CoinType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TierConfigInput {
-    Subscription { duration_ms: u64 },
-    Quota { quota_limit: u64, duration_ms: u64 },
+    Subscription { expires_at: u64 },
+    Quota { quota_limit: u64, expires_at: u64 },
     UsageBased {},
 }
 
@@ -18,20 +18,20 @@ pub struct TierInfo {
 }
 
 impl TierConfigInput {
-    pub fn from_u8(tier: &u8, duration: &Option<u64>, quota: &Option<u64>) -> Result<Self> {
+    pub fn from_u8(tier: &u8, expires_at: &Option<u64>, quota: &Option<u64>) -> Result<Self> {
         match tier {
             0 => {
-                let duration_ms = duration.ok_or_else(|| anyhow!("invalid duration provided"))?;
+                let expires_at = expires_at.ok_or_else(|| anyhow!("invalid duration provided"))?;
 
-                Ok(TierConfigInput::Subscription { duration_ms })
+                Ok(TierConfigInput::Subscription { expires_at })
             }
             1 => {
                 let quota_limit = quota.ok_or_else(|| anyhow!("invalid quota limit provided"))?;
-                let duration_ms = duration.ok_or_else(|| anyhow!("invalid duration provided"))?;
+                let expires_at = expires_at.ok_or_else(|| anyhow!("invalid duration provided"))?;
 
                 Ok(TierConfigInput::Quota {
                     quota_limit,
-                    duration_ms,
+                    expires_at,
                 })
             }
             2 => Ok(TierConfigInput::UsageBased {}),
@@ -57,8 +57,8 @@ impl TierConfigInput {
 
     pub fn duration(&self) -> Option<u64> {
         match self {
-            TierConfigInput::Subscription { duration_ms } => Some(*duration_ms),
-            TierConfigInput::Quota { duration_ms, .. } => Some(*duration_ms),
+            TierConfigInput::Subscription { expires_at } => Some(*expires_at),
+            TierConfigInput::Quota { expires_at, .. } => Some(*expires_at),
             TierConfigInput::UsageBased {} => None,
         }
     }

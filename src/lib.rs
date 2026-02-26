@@ -4,6 +4,7 @@ pub mod cmd;
 pub mod db;
 pub mod events;
 pub mod ptb;
+pub mod pubsub;
 pub mod transactions;
 pub mod types;
 pub mod utils;

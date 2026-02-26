@@ -30,6 +30,7 @@ async fn main() -> Result<()> {
 
     let grpc_url = std::env::var("GRPC_URL").expect("GRPC_URL environment variable must be set");
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL must be set");
 
     let pool = create_pool(&database_url).await?;
 
@@ -40,7 +41,8 @@ async fn main() -> Result<()> {
     let listener = EventListener::new(&grpc_url, tx).await?;
     let pool = Arc::new(pool);
     let repo = Repository::new(pool);
-    let worker = EventWorker::new(repo, rx);
+    let redis_client = redis::Client::open(redis_url)?;
+    let worker = EventWorker::new(repo, rx, redis_client).await?;
     let listener_handle = tokio::spawn(async move {
         if let Err(e) = listener.run().await {
             tracing::error!("Event listener failed: {}", e);

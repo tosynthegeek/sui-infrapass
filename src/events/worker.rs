@@ -1,20 +1,33 @@
 // worker.rs
 use anyhow::Result;
+use redis::Client as RedisClient;
 use tokio::sync::mpsc::Receiver;
 use tracing::{error, info};
 
 use crate::events::types::{EventPayload, ProtocolEvent};
 
 use crate::db::repository::Repository;
+use crate::pubsub::publisher::PubSubPublisher;
+use crate::utils::error::InfrapassError;
 
 pub struct EventWorker {
     repo: Repository,
+    pub publisher: PubSubPublisher,
     rx: Receiver<EventPayload>,
 }
 
 impl EventWorker {
-    pub fn new(repo: Repository, rx: Receiver<EventPayload>) -> Self {
-        Self { repo, rx }
+    pub async fn new(
+        repo: Repository,
+        rx: Receiver<EventPayload>,
+        redis_client: RedisClient,
+    ) -> Result<Self, InfrapassError> {
+        let publisher = PubSubPublisher::new(redis_client.clone()).await?;
+        Ok(Self {
+            repo,
+            rx,
+            publisher,
+        })
     }
 
     pub async fn run(mut self) -> Result<()> {
@@ -144,7 +157,7 @@ impl EventWorker {
             }
 
             ProtocolEvent::EntitlementPurchased(e) => {
-                self.repo.create_entitlement(&e).await?;
+                let ent = self.repo.create_entitlement(&e).await?;
                 info!(
                     entitlement_id = ?e.entitlement_id,
                     buyer = %e.buyer,
@@ -153,6 +166,8 @@ impl EventWorker {
                     price_paid = e.price_paid,
                     "Entitlement purchased"
                 );
+
+                self.publisher.publish_refresh(&ent.provider_id, e).await?;
 
                 Ok(())
             }

@@ -9,18 +9,18 @@ pub fn build_tier_config_args(
     config: TierConfigInput,
 ) -> Result<(Argument, Argument, Argument)> {
     match config {
-        TierConfigInput::Subscription { duration_ms } => Ok((
+        TierConfigInput::Subscription { expires_at } => Ok((
             ptb.pure(0u8)?,
-            ptb.pure(Some(duration_ms))?,
+            ptb.pure(Some(expires_at))?,
             ptb.pure(None::<u64>)?,
         )),
 
         TierConfigInput::Quota {
             quota_limit,
-            duration_ms,
+            expires_at,
         } => Ok((
             ptb.pure(1u8)?,
-            ptb.pure(Some(duration_ms))?,
+            ptb.pure(Some(expires_at))?,
             ptb.pure(Some(quota_limit))?,
         )),
 

@@ -131,11 +131,35 @@ impl EntitlementConfig {
         }
     }
 
+    pub fn quota(&self) -> Option<u64> {
+        match self {
+            EntitlementConfig::Subscription { .. } => None,
+            EntitlementConfig::Quota { quota, .. } => Some(*quota),
+            EntitlementConfig::UsageBased { .. } => None,
+        }
+    }
+
+    pub fn units(&self) -> Option<u64> {
+        match self {
+            EntitlementConfig::Subscription { .. } => None,
+            EntitlementConfig::Quota { .. } => None,
+            EntitlementConfig::UsageBased { units } => Some(*units),
+        }
+    }
+
     pub fn kind(&self) -> &str {
         match self {
             EntitlementConfig::Subscription { .. } => "Subscription",
             EntitlementConfig::Quota { .. } => "Quota",
             EntitlementConfig::UsageBased { .. } => "UsageBased",
+        }
+    }
+
+    pub fn type_u8(&self) -> u8 {
+        match self {
+            EntitlementConfig::Subscription { .. } => 0,
+            EntitlementConfig::Quota { .. } => 1,
+            EntitlementConfig::UsageBased { .. } => 2,
         }
     }
 }

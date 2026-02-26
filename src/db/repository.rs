@@ -358,12 +358,19 @@ impl Repository {
     
         let entitlement = sqlx::query_as::<_, Entitlement>(
             r#"
+            WITH inserted AS (
             INSERT INTO entitlements
             (entitlement_id, buyer, service_id, tier_id, price_paid, expires_at, quota, units, created_at)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
             ON CONFLICT (entitlement_id) DO NOTHING
             RETURNING *
-            "#,
+            )
+            SELECT 
+            inserted.*,
+            s.provider_id
+            FROM inserted
+            JOIN services s ON s.service_id = inserted.service_id
+                "#,
         )
         .bind(&entitlement_id)
         .bind(&event.buyer.to_string())
