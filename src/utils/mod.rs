@@ -7,6 +7,7 @@ pub mod address;
 pub mod coin;
 pub mod config;
 pub mod constants;
+pub mod error;
 
 pub fn handle_response(resp: &SuiTransactionBlockResponse) {
     match resp.status_ok() {
@@ -80,4 +81,8 @@ pub async fn get_checkpoint_with_retry(
         tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
     }
     None
+}
+
+pub fn get_channel(provider_id: &str) -> String {
+    format!("infrapass:{provider_id}:events")
 }
