@@ -1,9 +1,13 @@
-use axum::Router;
-use infrapass::adapters::{
-    config::SidecarConfig,
-    metrics,
-    proxy::{self, ProxyState},
+use axum::{Json, Router, extract::State, response::IntoResponse};
+use infrapass::{
+    adapters::{
+        config::SidecarConfig,
+        metrics,
+        proxy::{self, ProxyState},
+    },
+    pubsub::subscriber::PubSubSubscriber,
 };
+use redis::AsyncCommands;
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::timeout::TimeoutLayer;
@@ -30,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let state = Arc::new(ProxyState::new(cfg.clone()).await?);
+    let pubsub_state = state.clone();
 
     let app = Router::new()
         .route("/metrics", axum::routing::get(metrics::metrics_handler))
@@ -43,12 +48,27 @@ async fn main() -> anyhow::Result<()> {
 
     let addr = format!("0.0.0.0:{}", cfg.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
+
+    let subscriber = PubSubSubscriber::new(pubsub_state);
+
+    tokio::spawn(async move {
+        if let Err(e) = subscriber.run().await {
+            tracing::error!(error = %e, "PubSub listener crashed");
+        }
+    });
+
     info!("Listening on {}", addr);
 
     axum::serve(listener, app).await?;
     Ok(())
 }
 
-async fn health_handler() -> axum::Json<serde_json::Value> {
-    axum::Json(serde_json::json!({ "status": "ok", "service": "infrapass-sidecar" }))
+async fn health_handler(State(state): State<Arc<ProxyState>>) -> impl IntoResponse {
+    let redis_ok = state.redis.clone().ping::<String>().await.is_ok();
+    let status = if redis_ok { "ok" } else { "degraded" };
+    Json(serde_json::json!({
+        "status": status,
+        "redis": redis_ok,
+        "service": "infrapass-sidecar"
+    }))
 }
