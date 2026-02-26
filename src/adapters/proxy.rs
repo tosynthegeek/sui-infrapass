@@ -4,6 +4,7 @@ use axum::{
     http::StatusCode,
     response::Response,
 };
+use chrono::Utc;
 use redis::{Client as RedisClient, aio::MultiplexedConnection};
 use std::sync::Arc;
 use tracing::{instrument, warn};
@@ -28,6 +29,7 @@ pub struct ProxyState {
     pub validator: ValidatorClient,
     pub http_client: reqwest::Client,
     pub redis: MultiplexedConnection,
+    pub redis_client: RedisClient,
 }
 
 impl ProxyState {
@@ -48,6 +50,7 @@ impl ProxyState {
             validator,
             http_client,
             redis,
+            redis_client,
         })
     }
 
@@ -203,15 +206,31 @@ pub async fn proxy_handler(
                 Err(e) => {
                     METRICS.validator_errors.inc();
                     warn!(error = ?e, "Validator API error");
+                    if state.cfg.fail_open {
+                        warn!("Failing open due to validator error");
+                        return Ok(deny_response(
+                            StatusCode::OK,
+                            "validator_error, failing_open",
+                        )?);
+                    } else {
+                        warn!("Failing closed due to validator error");
+                    }
                     return Ok(deny_response(
-                        StatusCode::BAD_GATEWAY,
-                        "validator_unreachable",
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        "validator_error",
                     )?);
                 }
             };
             let resp_to_cache_type = to_cached(&resp);
             let allowed = resp_to_cache_type.allowed();
-            let ttl_secs = if allowed { 60 } else { 5 };
+            let ttl_secs: u64 = match resp_to_cache_type.expires_at {
+                Some(exp) => {
+                    let now = Utc::now();
+                    let remaining = (exp - now).num_seconds();
+                    if remaining > 0 { remaining as u64 } else { 0 }
+                }
+                None => state.cfg.cache_ttl_ms / 1000,
+            };
             let _ = state
                 .set_entitlement(&user_address, &service_id, &resp_to_cache_type, ttl_secs)
                 .await;
@@ -265,7 +284,7 @@ pub async fn proxy_handler(
     {
         let result: i64 = redis::Script::new(LUA_ATOMIC_CHECK_AND_DECREMENT)
             .key(&state.quota_key(&user_address, &service_id))
-            .arg(cost)
+            .arg(cost as i64)
             .arg(entitlement.tier_type as i64)
             .invoke_async(&mut conn)
             .await?;
@@ -280,11 +299,13 @@ pub async fn proxy_handler(
                 )?);
             }
             -2 => {
-                // Not initialized — only a problem for quota/unit tiers
-                // For subscription this never fires since we return 0 above
                 warn!(user = %user_address, tier = entitlement.tier_type, "Quota key not initialized");
-                // Allow through — subscription tiers don't need the key,
-                // and a missing quota key on first request will be seeded next cache miss
+                if entitlement.tier_type != 0 {
+                    return Ok(deny_response(
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        "quota_not_ready",
+                    )?);
+                }
             }
             -3 => {
                 METRICS.requests_denied.inc();

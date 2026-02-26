@@ -16,11 +16,11 @@ impl CachedEntitlement {
     pub fn allowed(&self) -> bool {
         match self.tier_type {
             0 => self.expires_at.map_or(false, |exp| exp > Utc::now()),
-            2 => {
+            1 => {
                 self.quota.map_or(false, |q| q > 0)
                     && self.expires_at.map_or(false, |exp| exp > Utc::now())
             }
-            3 => self.units.map_or(false, |u| u > 0),
+            2 => self.units.map_or(false, |u| u > 0),
             _ => false,
         }
     }
