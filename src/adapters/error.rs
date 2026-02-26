@@ -5,6 +5,8 @@ use axum::response::{IntoResponse, Response};
 use hmac::digest::InvalidLength;
 use redis::RedisError;
 
+use crate::utils::error::InfrapassError;
+
 #[derive(Debug)]
 pub enum ProxyError {
     InvalidRequest(String),
@@ -107,5 +109,11 @@ impl From<std::io::Error> for ProxyError {
 impl From<InvalidLength> for ProxyError {
     fn from(err: InvalidLength) -> Self {
         ProxyError::InternalError(format!("HMAC error : {}", err))
+    }
+}
+
+impl From<InfrapassError> for ProxyError {
+    fn from(err: InfrapassError) -> Self {
+        ProxyError::InternalError(format!("Infrapass error: {}", err))
     }
 }
