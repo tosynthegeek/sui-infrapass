@@ -27,6 +27,7 @@ sui_transaction_builder = { git = "https://github.com/MystenLabs/sui", package =
 sui-grpc = { git = "https://github.com/MystenLabs/sui-rust-sdk", package = "sui-rpc" }
 shared-crypto = { git = "https://github.com/MystenLabs/sui", package = "shared-crypto" }
 tokio = { version = "1.2", features = ["full"] }
+tokio-stream = "0.1"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 anyhow = "1.0"
 thiserror = "1"
