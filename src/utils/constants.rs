@@ -25,21 +25,36 @@ pub const LUA_ATOMIC_CHECK_AND_DECREMENT: &str = r#"
     local cost = tonumber(ARGV[1])
     local tier_type = tonumber(ARGV[2])
 
+    -- Subscription: always allow, no counter needed
     if tier_type == 0 then
         return 0
     end
 
-    if tier_type == 2 or tier_type == 3 then
+    -- Quota (1) and UsageBased (2): check and decrement
+    if tier_type == 1 or tier_type == 2 then
         local current = redis.call('GET', quota_key)
+
+        -- Key not initialized
         if current == false then
-            return -2 
+            return -2
         end
+
         current = tonumber(current)
+
+        -- Shouldn't happen but guard against nil/NaN
+        if current == nil then
+            return -2
+        end
+
+        -- Insufficient quota/units
         if current < cost then
             return -1
         end
+
+        -- Atomic decrement and return new value
         return redis.call('DECRBY', quota_key, cost)
     end
 
+    -- Unknown tier type
     return -3
 "#;
