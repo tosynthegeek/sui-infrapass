@@ -1,4 +1,10 @@
-use crate::adapters::error::ProxyError;
+use axum::{
+    Json,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+
+use crate::sidecar::error::ProxyError;
 
 #[derive(Debug)]
 pub enum InfrapassError {
@@ -29,6 +35,25 @@ impl std::fmt::Display for InfrapassError {
     }
 }
 
+impl IntoResponse for InfrapassError {
+    fn into_response(self) -> Response {
+        let (status, message) = match &self {
+            InfrapassError::DatabaseError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+            InfrapassError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            InfrapassError::Other(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+            InfrapassError::RedisError(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+            InfrapassError::SerdeError(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+            InfrapassError::ProxyError(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+            InfrapassError::AdapterError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+            InfrapassError::EventProcessingError(msg) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
+            }
+        };
+
+        (status, Json(serde_json::json!({ "error": message }))).into_response()
+    }
+}
+
 impl std::error::Error for InfrapassError {}
 
 impl From<ProxyError> for InfrapassError {
@@ -46,5 +71,17 @@ impl From<redis::RedisError> for InfrapassError {
 impl From<serde_json::Error> for InfrapassError {
     fn from(err: serde_json::Error) -> Self {
         InfrapassError::SerdeError(err)
+    }
+}
+
+impl From<anyhow::Error> for InfrapassError {
+    fn from(err: anyhow::Error) -> Self {
+        InfrapassError::Other(err.to_string())
+    }
+}
+
+impl From<sqlx::Error> for InfrapassError {
+    fn from(err: sqlx::Error) -> Self {
+        InfrapassError::DatabaseError(err.to_string())
     }
 }
