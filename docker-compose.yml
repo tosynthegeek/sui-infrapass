@@ -16,5 +16,34 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:alpine
+    container_name: infrapass-redis
+    ports:
+      - "6380:6379"
+    command:
+      [
+        "redis-server",
+        "--requirepass",
+        "${BACKEND_REDIS_PASSWORD}",
+        "--save",
+        "60",
+        "1",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
+        "--loglevel",
+        "warning",
+      ]
+    environment:
+      REDIS_PASSWORD: ${BACKEND_REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
 volumes:
   db_data:
+    driver: local
+  redis_data:
+    driver: local
