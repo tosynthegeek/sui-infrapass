@@ -1,9 +1,10 @@
 use redis::{Client as RedisClient, aio::MultiplexedConnection};
+use tracing::info;
 
 use crate::{
     events::types::EntitlementPurchased,
     pubsub::types::{EntitlementUpdateEvent, PubSubAction, PubSubEvent, TierEntitlement},
-    utils::{error::InfrapassError, get_channel},
+    utils::{error::InfrapassError, get_channel, logs_fmt::abbrev},
 };
 
 pub struct PubSubPublisher {
@@ -47,10 +48,17 @@ impl PubSubPublisher {
         let message = serde_json::to_string(&pubsub_event)?;
         let mut conn = self.redis.clone();
         let _: i64 = redis::cmd("PUBLISH")
-            .arg(channel)
+            .arg(&channel)
             .arg(message)
             .query_async(&mut conn)
             .await?;
+
+        info!(
+            event = "ent.published",
+            provider_id = %abbrev(&provider_id),
+            user = %abbrev(&pubsub_event.user),
+            service = %abbrev(&pubsub_event.service),
+        );
         Ok(())
     }
 }

@@ -8,6 +8,7 @@ pub mod coin;
 pub mod config;
 pub mod constants;
 pub mod error;
+pub mod logs_fmt;
 
 pub fn handle_response(resp: &SuiTransactionBlockResponse) {
     match resp.status_ok() {
