@@ -5,9 +5,9 @@ use redis::aio::PubSub;
 use tracing::{info, warn};
 
 use crate::{
-    adapters::{error::ProxyError, proxy::ProxyState},
+    sidecar::{error::ProxyError, proxy::ProxyState},
     pubsub::types::{PubSubAction, PubSubEvent},
-    utils::get_channel,
+    utils::{get_channel, logs_fmt::abbrev},
 };
 
 pub struct PubSubSubscriber {
@@ -20,18 +20,18 @@ impl PubSubSubscriber {
     }
 
     pub async fn run(&self) -> Result<(), ProxyError> {
-        run_pubsub_listener(&self.state).await
+        run_pubsub_listener(self.state.clone()).await
     }
 }
 
-async fn run_pubsub_listener(state: &Arc<ProxyState>) -> Result<(), ProxyError> {
+pub async fn run_pubsub_listener(state: Arc<ProxyState>) -> Result<(), ProxyError> {
     let mut pubsub_conn: PubSub = state.redis_client.get_async_pubsub().await?;
 
     let channel = get_channel(state.cfg.provider_id.as_str());
 
     pubsub_conn.subscribe(&channel).await?;
 
-    info!(%channel, "Subscribed to provider event channel");
+    info!(channel = %abbrev(&channel), "Subscribed");
 
     let mut stream = pubsub_conn.on_message();
 
@@ -41,14 +41,15 @@ async fn run_pubsub_listener(state: &Arc<ProxyState>) -> Result<(), ProxyError> 
 
         match event.action {
             PubSubAction::Invalidate => {
-                info!(
-                    user = %event.user,
-                    service = %event.service,
-                    "Received cache invalidation event"
-                );
                 let _ = state
                     .invalidate_entitlement(&event.user, &event.service)
                     .await;
+
+                info!(
+                    user = %abbrev(&event.user),
+                    service = %abbrev(&event.service),
+                    "Cache invalidated"
+                );
             }
             PubSubAction::Refresh(tier) => {
                 let _ = state
@@ -62,7 +63,7 @@ async fn run_pubsub_listener(state: &Arc<ProxyState>) -> Result<(), ProxyError> 
                         let remaining = (exp - now).num_seconds();
                         if remaining > 0 { remaining as u64 } else { 0 }
                     }
-                    None => state.cfg.cache_ttl_ms / 1000, // default TTL if no expiration
+                    None => state.cfg.cache_ttl_ms / 1000,
                 };
                 let _ = state
                     .set_entitlement(&event.user, &event.service, &ent, ttl)
@@ -74,8 +75,23 @@ async fn run_pubsub_listener(state: &Arc<ProxyState>) -> Result<(), ProxyError> 
                             .set_quota(&event.user, &event.service, q as i64, ttl)
                             .await;
                     }
-                    // same for units
                 }
+
+                let ent = match state.get_entitlement(&event.user, &event.service).await {
+                    Some(ent) => ent,
+                    None => {
+                        warn!(user = %event.user, service = %event.service, "Failed to retrieve entitlement after refresh");
+                        continue;
+                    }
+                };
+
+                info!(
+                    event = "cache.refresh",
+                    user = %abbrev(&event.user),
+                    service = %abbrev(&event.service),
+                    entitlement_id = %abbrev(&ent.id),
+                    "Cache refreshed"
+                );
             }
         }
     }

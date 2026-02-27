@@ -2,6 +2,7 @@ use axum::Json;
 use axum::http::StatusCode;
 use axum::http::status::InvalidStatusCode;
 use axum::response::{IntoResponse, Response};
+use config::ConfigError;
 use hmac::digest::InvalidLength;
 use redis::RedisError;
 
@@ -19,6 +20,7 @@ pub enum ProxyError {
     ReqwestError(reqwest::Error),
     SerdeError(serde_json::Error),
     AxumError(axum::Error),
+    ConfigError(String),
 }
 
 impl std::fmt::Display for ProxyError {
@@ -34,6 +36,7 @@ impl std::fmt::Display for ProxyError {
             ProxyError::ReqwestError(err) => write!(f, "Reqwest Error: {}", err),
             ProxyError::SerdeError(err) => write!(f, "Serde Error: {}", err),
             ProxyError::AxumError(err) => write!(f, "Axum Error: {}", err),
+            ProxyError::ConfigError(err) => write!(f, "Config Error: {}", err),
         }
     }
 }
@@ -51,6 +54,7 @@ impl IntoResponse for ProxyError {
             ProxyError::ReqwestError(e) => (StatusCode::BAD_GATEWAY, e.to_string()),
             ProxyError::SerdeError(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
             ProxyError::AxumError(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+            ProxyError::ConfigError(e) => (StatusCode::BAD_REQUEST, e.to_string()),
         };
 
         let body = Json(serde_json::json!({
@@ -115,5 +119,11 @@ impl From<InvalidLength> for ProxyError {
 impl From<InfrapassError> for ProxyError {
     fn from(err: InfrapassError) -> Self {
         ProxyError::InternalError(format!("Infrapass error: {}", err))
+    }
+}
+
+impl From<ConfigError> for ProxyError {
+    fn from(err: ConfigError) -> Self {
+        ProxyError::ConfigError(format!("Infrapass error: {}", err))
     }
 }

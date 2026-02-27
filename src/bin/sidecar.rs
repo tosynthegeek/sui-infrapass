@@ -1,11 +1,13 @@
-use axum::{Json, Router, extract::State, response::IntoResponse};
+use axum::{Json, Router, extract::State, middleware, response::IntoResponse};
 use infrapass::{
-    adapters::{
+    pubsub::subscriber::PubSubSubscriber,
+    sidecar::{
         config::SidecarConfig,
         metrics,
+        middleware::auth_middleware,
         proxy::{self, ProxyState},
     },
-    pubsub::subscriber::PubSubSubscriber,
+    utils::logs_fmt::UptimeSeconds,
 };
 use redis::AsyncCommands;
 use std::sync::Arc;
@@ -13,25 +15,20 @@ use std::time::Duration;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{
+    EnvFilter, Layer,
+    fmt::{self, format::FmtSpan},
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "infrapass_sidecar=info,tower_http=warn".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer().json()) // JSON logs for prod
-        .init();
+    init_tracing();
 
     let cfg = SidecarConfig::load()?;
-    info!(
-        upstream = %cfg.upstream_url,
-        validator = %cfg.validator_api_url,
-        port = cfg.port,
-        "Infrapass sidecar starting"
-    );
+    cfg.validate()?;
+    info!(upstream = %cfg.upstream_url, port = cfg.port, "Sidecar starting");
 
     let state = Arc::new(ProxyState::new(cfg.clone()).await?);
     let pubsub_state = state.clone();
@@ -40,6 +37,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/metrics", axum::routing::get(metrics::metrics_handler))
         .route("/healthz", axum::routing::get(health_handler))
         .fallback(proxy::proxy_handler)
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ))
         .layer(TraceLayer::new_for_http())
         .layer(TimeoutLayer::new(Duration::from_millis(
             cfg.request_timeout_ms,
@@ -71,4 +72,50 @@ async fn health_handler(State(state): State<Arc<ProxyState>>) -> impl IntoRespon
         "redis": redis_ok,
         "service": "infrapass-sidecar"
     }))
+}
+
+fn init_tracing() {
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("infrapass_sidecar=info,infrapass=info,tower_http=warn")
+    });
+
+    let is_json = std::env::var("LOG_FORMAT").unwrap_or_default() == "json";
+
+    let fmt_layer = if is_json {
+        fmt::layer()
+            .json()
+            .with_current_span(false)
+            .with_span_list(false)
+            .with_ansi(true)
+            .with_span_events(FmtSpan::NONE)
+            .event_format(
+                fmt::format()
+                    .compact()
+                    .with_level(true)
+                    .with_timer(UptimeSeconds),
+            )
+            .boxed()
+    } else {
+        fmt::layer()
+            .compact()
+            .with_target(false)
+            .with_thread_ids(false)
+            .with_file(false)
+            .with_line_number(false)
+            .with_thread_names(false)
+            .with_ansi(true)
+            .with_span_events(FmtSpan::NONE)
+            .event_format(
+                fmt::format()
+                    .compact()
+                    .with_level(true)
+                    .with_timer(UptimeSeconds),
+            )
+            .boxed()
+    };
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt_layer)
+        .init();
 }

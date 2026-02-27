@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tracing::{instrument, warn};
 
 use crate::{
-    adapters::{
+    sidecar::{
         cache::CachedEntitlement,
         config::SidecarConfig,
         error::ProxyError,
@@ -22,7 +22,7 @@ use crate::{
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-type HmacSha256 = Hmac<Sha256>;
+pub type HmacSha256 = Hmac<Sha256>;
 
 pub struct ProxyState {
     pub cfg: SidecarConfig,
@@ -299,19 +299,36 @@ pub async fn proxy_handler(
                 )?);
             }
             -2 => {
-                warn!(user = %user_address, tier = entitlement.tier_type, "Quota key not initialized");
-                if entitlement.tier_type != 0 {
-                    return Ok(deny_response(
-                        StatusCode::SERVICE_UNAVAILABLE,
-                        "quota_not_ready",
-                    )?);
-                }
+                METRICS.requests_denied.inc();
+                warn!(
+                    user = %user_address,
+                    tier_type = entitlement.tier_type,
+                    "Quota key not initialized"
+                );
+                return Ok(deny_response(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "quota_not_ready",
+                )?);
             }
             -3 => {
                 METRICS.requests_denied.inc();
+                warn!(
+                    user = %user_address,
+                    tier_type = entitlement.tier_type,
+                    "Unknown tier type in Lua script"
+                );
                 return Ok(deny_response(StatusCode::BAD_REQUEST, "unknown_tier_type")?);
             }
-            _ => {} // allowed, with result as new quota (for quota-based) or units (for usage-based)
+            n => {
+                if n < 10 {
+                    warn!(
+                        user = %user_address,
+                        service = %service_id,
+                        remaining = n,
+                        "Low quota"
+                    );
+                }
+            }
         }
     }
 
@@ -371,7 +388,7 @@ pub async fn proxy_handler(
     Ok(response)
 }
 
-fn deny_response(status: StatusCode, reason: &str) -> Result<Response, ProxyError> {
+pub fn deny_response(status: StatusCode, reason: &str) -> Result<Response, ProxyError> {
     let body = serde_json::json!({
         "error": reason,
         "status": status.as_u16(),

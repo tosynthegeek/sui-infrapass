@@ -4,16 +4,16 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tracing::{error, warn};
 
-use crate::adapters::cache::CachedEntitlement;
+use crate::sidecar::cache::CachedEntitlement;
 
-#[derive(Debug, Serialize)]
-struct ValidateRequest<'a> {
-    user_address: &'a str,
-    service_id: &'a str,
-    request_cost: u64,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ValidateRequest {
+    pub user_address: String,
+    pub service_id: String,
+    pub request_cost: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ValidateResponse {
     pub entitlement_id: String,
     pub tier: String,
@@ -73,8 +73,8 @@ impl ValidatorClient {
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&ValidateRequest {
-                user_address,
-                service_id,
+                user_address: user_address.to_string(),
+                service_id: service_id.to_string(),
                 request_cost: cost,
             })
             .send()

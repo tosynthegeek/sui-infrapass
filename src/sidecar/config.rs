@@ -1,6 +1,8 @@
 use anyhow::Result;
 use serde::Deserialize;
 
+use crate::sidecar::{error::ProxyError, middleware::AuthMode};
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct SidecarConfig {
     /// Port the sidecar listens on (default 8080)
@@ -20,6 +22,12 @@ pub struct SidecarConfig {
 
     /// The provider ID this sidecar is protecting (registered in your protocol)
     pub provider_id: String,
+
+    #[serde(default)]
+    pub auth_mode: AuthMode,
+
+    /// Expected value for ApiKey or BearerToken modes
+    pub auth_secret: Option<String>,
 
     /// How long to cache a VALID entitlement locally (milliseconds)
     /// Trades off real-time accuracy vs latency. 10-30s is a good default.
@@ -64,15 +72,31 @@ pub struct SidecarConfig {
 }
 
 impl SidecarConfig {
-    pub fn load() -> Result<Self> {
+    pub fn load() -> Result<Self, ProxyError> {
         dotenvy::dotenv().ok();
 
-        let cfg = config::Config::builder()
-            .add_source(config::Environment::with_prefix("INFRAPASS_SIDECAR").separator("_"))
+        let cfg: SidecarConfig = config::Config::builder()
+            .add_source(config::Environment::default())
             .build()?
             .try_deserialize()?;
 
+        match cfg.auth_mode {
+            AuthMode::None => {}
+            AuthMode::ApiKey | AuthMode::BearerToken => {
+                if cfg.auth_secret.as_deref().unwrap_or("").is_empty() {
+                    return Err(ProxyError::ConfigError(
+                        "auth_secret must be set when auth_mode is api_key or bearer_token"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
         Ok(cfg)
+    }
+
+    pub fn validate(&self) -> Result<(), ProxyError> {
+        Ok(())
     }
 }
 

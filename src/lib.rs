@@ -1,4 +1,5 @@
-pub mod adapters;
+pub mod sidecar;
+pub mod backend;
 pub mod client;
 pub mod cmd;
 pub mod db;

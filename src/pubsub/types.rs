@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{adapters::cache::CachedEntitlement, utils::error::InfrapassError};
+use crate::{sidecar::cache::CachedEntitlement, utils::error::InfrapassError};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PubSubEvent {
@@ -54,7 +54,7 @@ impl EntitlementUpdateEvent {
                     .inner
                     .expires_at()
                     .map(|ts| {
-                        DateTime::<Utc>::from_timestamp(ts as i64, 0).ok_or_else(|| {
+                        DateTime::<Utc>::from_timestamp_millis(ts as i64).ok_or_else(|| {
                             InfrapassError::ValidationError("invalid timestamp".into())
                         })
                     })
@@ -71,7 +71,7 @@ impl EntitlementUpdateEvent {
                     .inner
                     .expires_at()
                     .map(|ts| {
-                        DateTime::<Utc>::from_timestamp(ts as i64, 0).ok_or_else(|| {
+                        DateTime::<Utc>::from_timestamp_millis(ts as i64).ok_or_else(|| {
                             InfrapassError::ValidationError("invalid timestamp".into())
                         })
                     })
