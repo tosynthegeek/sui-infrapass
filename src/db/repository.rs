@@ -5,8 +5,7 @@ use anyhow::Result;
 use sqlx::PgPool;
 
 use crate::{
-    db::models::{BlockchainEvent, Entitlement, PricingTier, Provider, Service, TierType},
-    events::types::{EntitlementConfig, EntitlementPurchased, ProtocolEvent},
+    sidecar::validator::ValidateResponse, db::models::{BlockchainEvent, Entitlement, EntitlementWithTier, PricingTier, Provider, Service, TierType}, events::types::{EntitlementConfig, EntitlementPurchased, ProtocolEvent}, utils::error::InfrapassError
 };
 
 pub struct Repository {
@@ -514,5 +513,70 @@ impl Repository {
         .await?;
 
         Ok(events)
+    }
+
+    pub async fn get_valid_entitlement_response(
+        &self,
+        user_address: &str,
+        service_id: &str,
+        cost: u64,
+    ) -> Result<Option<ValidateResponse>, InfrapassError> {
+        let row = sqlx::query_as::<_, EntitlementWithTier>(
+            r#"
+            SELECT e.*, t.tier_type, t.duration_ms, t.quota_limit
+            FROM entitlements e
+            JOIN pricing_tiers t ON e.tier_id = t.tier_id
+            WHERE e.buyer = $1
+              AND e.service_id = $2
+              AND (
+                    (t.tier_type = 'subscription' AND (e.expires_at IS NULL OR e.expires_at > NOW()))
+                    OR
+                    (t.tier_type = 'quota' AND e.expires_at > NOW() AND e.quota > $3)
+                    OR
+                    (t.tier_type = 'usage_based' AND e.units > $3)
+                  )
+            LIMIT 1
+            "#,
+        )
+        .bind(user_address)
+        .bind(service_id)
+        .bind(cost as i64)
+        .fetch_optional(self.pool())
+        .await?;
+    
+        Ok(row.map(|r| ValidateResponse {
+            entitlement_id: r.entitlement_id,
+            tier: r.tier_id,
+            quota: r.quota.map(|q| q as u64),
+            units: Some(r.units as u64),
+            tier_type: match r.tier_type.as_str() {
+                "subscription" => 0,
+                "quota" => 1,
+                "usage_based" => 2,
+                _ => 0,
+            },
+            expires_at: r.expires_at,
+            notify_provider: None,
+        }))
+    }
+
+    pub async fn commit_usage(&self, entitlement_id: &str, user_address: &str, cost: u64) -> Result<(), InfrapassError> {
+        sqlx::query(
+            r#"
+            UPDATE entitlements
+            SET 
+                quota = CASE WHEN quota IS NOT NULL THEN quota - $3 ELSE NULL END,
+                units = CASE WHEN units IS NOT NULL THEN units - $3 ELSE NULL END
+            WHERE entitlement_id = $1
+            AND buyer = $2
+            "#,
+        )
+        .bind(entitlement_id)
+        .bind(user_address)
+        .bind(cost as i64)
+        .execute(self.pool())
+        .await?;
+
+        Ok(())
     }
 }

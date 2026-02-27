@@ -92,3 +92,20 @@ pub struct ApiRequest {
     pub request_size_bytes: Option<i32>,
     pub response_size_bytes: Option<i32>,
 }
+
+#[derive(sqlx::FromRow)]
+pub struct EntitlementWithTier {
+    pub entitlement_id: String,
+    pub buyer: String,
+    pub service_id: String,
+    pub tier_id: String,
+    pub price_paid: i64,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub quota: Option<i64>,
+    pub units: i64,
+    pub created_at: DateTime<Utc>,
+    pub provider_id: String,
+    pub tier_type: String,
+    pub duration_ms: Option<i64>,
+    pub quota_limit: Option<i64>,
+}
