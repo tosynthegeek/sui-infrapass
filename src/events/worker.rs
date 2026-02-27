@@ -1,4 +1,5 @@
-// worker.rs
+use std::sync::Arc;
+
 use anyhow::Result;
 use redis::Client as RedisClient;
 use tokio::sync::mpsc::Receiver;
@@ -11,14 +12,14 @@ use crate::pubsub::publisher::PubSubPublisher;
 use crate::utils::error::InfrapassError;
 
 pub struct EventWorker {
-    repo: Repository,
+    repo: Arc<Repository>,
     pub publisher: PubSubPublisher,
     rx: Receiver<EventPayload>,
 }
 
 impl EventWorker {
     pub async fn new(
-        repo: Repository,
+        repo: Arc<Repository>,
         rx: Receiver<EventPayload>,
         redis_client: RedisClient,
     ) -> Result<Self, InfrapassError> {
