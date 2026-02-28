@@ -39,7 +39,6 @@ impl PaymentCommands {
                 amount,
             } => {
                 let default_path = default_wallet_config()?;
-                // TODO: find a way to cache this
                 let mut wallet = load_wallet_context(default_path)?;
                 let sender = wallet.active_address()?;
                 let service = ObjectID::from_hex_literal(&service_id)?;
