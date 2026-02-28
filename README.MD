@@ -123,8 +123,8 @@ flowchart TB
 **1. Clone and build**
 
 ```bash
-git clone https://github.com/yourusername/infrapass.git
-cd infrapass
+git clone https://github.com/tosynthegeek/sui-infrapass
+cd sui-infrapass
 cargo build --release
 ```
 
