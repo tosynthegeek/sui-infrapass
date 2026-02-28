@@ -10,16 +10,8 @@ RUN apt-get update && \
 WORKDIR /usr/src/app
 
 COPY Cargo.toml Cargo.lock ./
-RUN mkdir -p src/bin && \
-    echo "fn main() {}" > src/bin/sidecar.rs && \
-    echo "fn main() {}" > src/bin/server.rs && \
-    echo "fn main() {}" > src/bin/cli.rs && \
-    echo "" > src/lib.rs && \
-    cargo build --release --bin infrapass-sidecar && \
-    rm -rf src
+COPY src ./src
 
-
-COPY . .
 RUN cargo build --release --bin infrapass-sidecar \
     && strip /usr/src/app/target/release/infrapass-sidecar
 
