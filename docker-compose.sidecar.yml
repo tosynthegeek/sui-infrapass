@@ -1,6 +1,6 @@
 services:
   infrapass-sidecar:
-    image: ghcr.io/tosynthegeek/infrapass/infrapass-sidecar:latest
+    image: ghcr.io/tosynthegeek/sui-infrapass/sidecar:latest
     restart: unless-stopped
     ports:
       - "8080:8080"

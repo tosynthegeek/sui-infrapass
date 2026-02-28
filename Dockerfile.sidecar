@@ -9,6 +9,9 @@ RUN apt-get update && \
 
 WORKDIR /usr/src/app
 
+ENV OPENSSL_STATIC=1
+ENV OPENSSL_VENDOR=1
+
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
