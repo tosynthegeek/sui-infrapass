@@ -110,6 +110,7 @@ flowchart TB
 | infrapass-server  | gRPC event indexer, event worker, and validator HTTP API                 |
 | infrapass-sidecar | Reverse proxy enforcing on-chain entitlements for provider APIs          |
 | infrapass-cli     | CLI for provider registration, tier management, and entitlement purchase |
+| infrapass-contracts    | Move smart contracts deployed on Sui handling provider registration, service definition, pricing tiers, entitlement minting, and on-chain access control logic |
 
 ## Infrastructure:
 
