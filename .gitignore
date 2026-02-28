@@ -1,6 +1,6 @@
 /target
 .env
-.env*
+.env.docker
 
 # contracts
 build/
