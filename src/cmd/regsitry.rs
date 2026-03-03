@@ -66,7 +66,7 @@ impl RegistryCommands {
                 let sender = wallet.active_address()?;
                 info!("Registering provider with address {} ...", sender);
                 let data = register_provider_tx(client, sender, metadata_uri).await?;
-                let resp = client.sign_and_execute_tx(data, wallet).await?;
+                let resp = client.sign_and_execute_tx(data, &mut wallet).await?;
 
                 handle_response(&resp);
 
@@ -83,7 +83,7 @@ impl RegistryCommands {
                 info!("Creating service with address {} ...", sender);
                 let data =
                     provider_create_service(client, sender, service_type, metadata_uri).await?;
-                let resp = client.sign_and_execute_tx(data, wallet).await?;
+                let resp = client.sign_and_execute_tx(data, &mut wallet).await?;
 
                 handle_response(&resp);
                 let effects = resp
@@ -113,7 +113,7 @@ impl RegistryCommands {
                 let service = ObjectID::from_hex_literal(&service_id)?;
                 let data =
                     update_service_metadata_tx(client, sender, service, metadata_uri).await?;
-                let resp = client.sign_and_execute_tx(data, wallet).await?;
+                let resp = client.sign_and_execute_tx(data, &mut wallet).await?;
                 handle_response(&resp);
                 Ok(())
             }
@@ -127,7 +127,7 @@ impl RegistryCommands {
                 let service = ObjectID::from_hex_literal(&service_id)?;
                 let data = set_service_active_tx(client, sender, service).await?;
 
-                let resp = client.sign_and_execute_tx(data, wallet).await?;
+                let resp = client.sign_and_execute_tx(data, &mut wallet).await?;
                 handle_response(&resp);
                 Ok(())
             }

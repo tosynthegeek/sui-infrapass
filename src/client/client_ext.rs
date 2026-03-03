@@ -30,7 +30,7 @@ pub trait SuiClientExt {
     async fn sign_and_execute_tx(
         &self,
         tx_data: TransactionData,
-        mut wallet: WalletContext,
+        wallet: &mut WalletContext,
     ) -> Result<SuiTransactionBlockResponse>;
     async fn build_tx_data(
         &self,
@@ -140,7 +140,7 @@ impl SuiClientExt for SuiClient {
     async fn sign_and_execute_tx(
         &self,
         tx_data: TransactionData,
-        mut wallet: WalletContext,
+        wallet: &mut WalletContext,
     ) -> Result<SuiTransactionBlockResponse, anyhow::Error> {
         let sender = wallet.active_address()?;
         let key = KeyIdentity::Address(sender);

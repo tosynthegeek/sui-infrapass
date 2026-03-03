@@ -45,7 +45,7 @@ impl PaymentCommands {
                 let tier = ObjectID::from_hex_literal(&tier_id)?;
                 let tx_data =
                     purchase_entitlement_tx(client, sender, service, tier, amount).await?;
-                let resp = client.sign_and_execute_tx(tx_data, wallet).await?;
+                let resp = client.sign_and_execute_tx(tx_data, &mut wallet).await?;
 
                 handle_response(&resp);
 

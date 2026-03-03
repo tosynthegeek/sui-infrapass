@@ -3,14 +3,15 @@ use std::{sync::Arc, time::Duration};
 use anyhow::Result;
 use dotenvy::dotenv;
 use infrapass::{
-    backend::router::build_router,
+    backend::{router::build_router, settlement::settlement_worker},
     db::{create_pool, repository::Repository, run_migrations},
     events::{listener::EventListener, types::EventPayload, worker::EventWorker},
 };
+use sui_sdk::SuiClientBuilder;
 use tokio::{signal, sync::mpsc};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -27,6 +28,8 @@ async fn main() -> Result<()> {
     let repo = Arc::new(Repository::new(pool));
     let redis_client = redis::Client::open(config.redis_url)?;
 
+    let sui_client = Arc::new(SuiClientBuilder::default().build(&config.grpc_url).await?);
+
     let app = build_router(repo.clone())
         .layer(TraceLayer::new_for_http())
         .layer(TimeoutLayer::new(Duration::from_secs(10)));
@@ -36,8 +39,8 @@ async fn main() -> Result<()> {
 
     let (tx, rx) = mpsc::channel::<EventPayload>(256);
 
-    let listener = EventListener::new(&config.grpc_url, tx).await?;
-    let worker = EventWorker::new(repo, rx, redis_client).await?;
+    let listener = EventListener::new(sui_client.clone(), &config.grpc_url, tx).await?;
+    let worker = EventWorker::new(repo.clone(), rx, redis_client).await?;
 
     let server_handle = tokio::spawn(async move {
         if let Err(e) = axum::serve(tcp_listener, app).await {
@@ -54,6 +57,20 @@ async fn main() -> Result<()> {
     let worker_handle = tokio::spawn(async move {
         if let Err(e) = worker.run().await {
             tracing::error!("Event worker failed: {}", e);
+        }
+    });
+
+    let settlement_repo = repo.clone();
+    let settlement_client = sui_client.clone();
+    let settlement_handle = tokio::spawn(async move {
+        if let Err(e) = settlement_worker(
+            settlement_repo,
+            settlement_client,
+            config.settlement_interval,
+        )
+        .await
+        {
+            error!("Settlement worker failed: {}", e);
         }
     });
 
@@ -81,6 +98,8 @@ async fn main() -> Result<()> {
                 Err(e) => tracing::error!("Event worker panicked: {}", e),
             }
         }
+
+        result = settlement_handle => tracing::error!("Settlement worker stopped: {:?}", result),
     }
 
     info!("Shutting down gracefully");
@@ -92,6 +111,7 @@ struct IConfig {
     database_url: String,
     redis_url: String,
     addr: String,
+    settlement_interval: u64,
 }
 
 fn load_config() -> IConfig {
@@ -104,6 +124,10 @@ fn load_config() -> IConfig {
             "0.0.0.0:{}",
             std::env::var("API_PORT").unwrap_or_else(|_| "8088".to_string())
         ),
+        settlement_interval: std::env::var("SETTLEMENT_INTERVAL")
+            .expect("SETTLEMENT_INTERVAL must be set")
+            .parse::<u64>()
+            .expect("SETTLEMENT_INTERVAL must be a valid number"),
     }
 }
 

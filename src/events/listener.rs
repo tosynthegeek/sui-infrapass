@@ -19,7 +19,7 @@ use sui_grpc::{
     },
 };
 use sui_json_rpc_types::CheckpointId;
-use sui_sdk::{SuiClient, SuiClientBuilder};
+use sui_sdk::SuiClient;
 use sui_types::base_types::ObjectID;
 use tokio::{
     sync::{RwLock, mpsc},
@@ -30,7 +30,7 @@ use tracing::{error, info, warn};
 
 #[derive(Clone)]
 pub struct EventListener {
-    pub sui_client: SuiClient,
+    pub sui_client: Arc<SuiClient>,
     pub client: Client,
     pub package_id: String,
     /// Sends parsed events to whoever is listening
@@ -39,11 +39,12 @@ pub struct EventListener {
 }
 
 impl EventListener {
-    pub async fn new(grpc_url: &str, event_tx: mpsc::Sender<EventPayload>) -> Result<Self> {
+    pub async fn new(
+        sui_client: Arc<SuiClient>,
+        grpc_url: &str,
+        event_tx: mpsc::Sender<EventPayload>,
+    ) -> Result<Self> {
         let client = Client::new(grpc_url.to_string())?;
-        let sui_client = SuiClientBuilder::default()
-            .build(grpc_url.to_string())
-            .await?;
 
         Ok(Self {
             client,

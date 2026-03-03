@@ -57,6 +57,15 @@ CREATE TABLE IF NOT EXISTS entitlements (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE usage_events (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entitlement_id TEXT NOT NULL,
+    user_address   TEXT NOT NULL,
+    amount         BIGINT NOT NULL,
+    recorded_at    TIMESTAMPTZ DEFAULT NOW(),
+    settled_at     TIMESTAMPTZ DEFAULT NULL 
+);
+
 CREATE TABLE IF NOT EXISTS blockchain_events (
     id BIGSERIAL,
     event_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),

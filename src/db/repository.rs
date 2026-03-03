@@ -3,9 +3,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::{
-    sidecar::validator::ValidateResponse, db::models::{BlockchainEvent, Entitlement, EntitlementWithTier, PricingTier, Provider, Service, TierType}, events::types::{EntitlementConfig, EntitlementPurchased, ProtocolEvent}, utils::error::InfrapassError
+    db::models::{AggregatedPending, BlockchainEvent, Entitlement, EntitlementWithTier, PricingTier, Provider, Service, TierType}, events::types::{EntitlementConfig, EntitlementPurchased, ProtocolEvent}, sidecar::validator::ValidateResponse, utils::error::InfrapassError
 };
 
 pub struct Repository {
@@ -561,22 +562,62 @@ impl Repository {
     }
 
     pub async fn commit_usage(&self, entitlement_id: &str, user_address: &str, cost: u64) -> Result<(), InfrapassError> {
-        sqlx::query(
-            r#"
-            UPDATE entitlements
-            SET 
-                quota = CASE WHEN quota IS NOT NULL THEN quota - $3 ELSE NULL END,
-                units = CASE WHEN units IS NOT NULL THEN units - $3 ELSE NULL END
-            WHERE entitlement_id = $1
-            AND buyer = $2
-            "#,
-        )
+        let mut tx = self.pool().begin().await?;
+
+        sqlx::query(r#"
+        UPDATE entitlements
+        SET 
+            quota = CASE WHEN quota IS NOT NULL THEN quota - $3 ELSE NULL END,
+            units = CASE WHEN units IS NOT NULL THEN units - $3 ELSE NULL END
+        WHERE entitlement_id = $1 AND buyer = $2
+        "#)
         .bind(entitlement_id)
         .bind(user_address)
         .bind(cost as i64)
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?;
 
+        sqlx::query(r#"
+            INSERT INTO usage_events (entitlement_id, user_address, amount)
+            VALUES ($1, $2, $3)
+        "#)
+        .bind(entitlement_id)
+        .bind(user_address)
+        .bind(cost as i64)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
+    pub async fn get_unsettled_aggregated(&self) -> Result<Vec<AggregatedPending>, InfrapassError> {
+        let row = sqlx::query_as::<_, AggregatedPending>(
+            r#"
+            SELECT 
+                entitlement_id,
+                SUM(amount) as total_amount,
+                ARRAY_AGG(id) as event_ids
+            FROM usage_events
+            WHERE settled_at IS NULL
+            GROUP BY entitlement_id
+            "#
+        )
+        .fetch_all(self.pool())
+        .await?;
+
+        Ok(row)
+    }
+    
+    pub async fn mark_settled(&self, event_ids: &[Uuid]) -> Result<(), InfrapassError> {
+        sqlx::query(r#"
+            UPDATE usage_events SET settled_at = NOW()
+            WHERE id = ANY($1)
+        "#)
+        .bind(event_ids)
+        .execute(self.pool())
+        .await?;
         Ok(())
     }
 }

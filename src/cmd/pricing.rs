@@ -136,7 +136,7 @@ impl PricingCommands {
                     *coin_type,
                 )
                 .await?;
-                let resp = client.sign_and_execute_tx(tx_data, wallet).await?;
+                let resp = client.sign_and_execute_tx(tx_data, &mut wallet).await?;
                 handle_response(&resp);
 
                 Ok(())
@@ -152,7 +152,7 @@ impl PricingCommands {
                 let tier = ObjectID::from_hex_literal(&tier_id)?;
 
                 let tx_data = add_tier_to_service_tx(&client, sender, service, tier).await?;
-                let resp = client.sign_and_execute_tx(tx_data, wallet).await?;
+                let resp = client.sign_and_execute_tx(tx_data, &mut wallet).await?;
                 handle_response(&resp);
                 Ok(())
             }
@@ -170,7 +170,7 @@ impl PricingCommands {
                 let tx_data =
                     update_tier_price_tx(&client, sender, *new_price, tier, *coin_type).await?;
 
-                let resp = client.sign_and_execute_tx(tx_data, wallet).await?;
+                let resp = client.sign_and_execute_tx(tx_data, &mut wallet).await?;
                 handle_response(&resp);
                 Ok(())
             }
@@ -181,7 +181,7 @@ impl PricingCommands {
                 let tier = ObjectID::from_hex_literal(&tier_id)?;
                 let tx_data = deactivate_tier_tx(&client, sender, tier, *coin_type).await?;
 
-                let _ = client.sign_and_execute_tx(tx_data, wallet).await?;
+                let _ = client.sign_and_execute_tx(tx_data, &mut wallet).await?;
                 Ok(())
             }
             PricingCommands::Reactivate { tier_id, coin_type } => {
@@ -191,7 +191,7 @@ impl PricingCommands {
 
                 let tier = ObjectID::from_hex_literal(&tier_id)?;
                 let tx_data = reactivate_tier_tx(&client, sender, tier, *coin_type).await?;
-                let resp = client.sign_and_execute_tx(tx_data, wallet).await?;
+                let resp = client.sign_and_execute_tx(tx_data, &mut wallet).await?;
                 handle_response(&resp);
                 Ok(())
             }
@@ -207,7 +207,7 @@ impl PricingCommands {
 
                 let tx_data = remove_tier_from_service_tx(&client, sender, tier, service).await?;
 
-                let resp = client.sign_and_execute_tx(tx_data, wallet).await?;
+                let resp = client.sign_and_execute_tx(tx_data, &mut wallet).await?;
                 handle_response(&resp);
                 Ok(())
             }

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "tier_type", rename_all = "snake_case")]
@@ -108,4 +109,11 @@ pub struct EntitlementWithTier {
     pub tier_type: String,
     pub duration_ms: Option<i64>,
     pub quota_limit: Option<i64>,
+}
+
+#[derive(sqlx::FromRow)]
+pub struct AggregatedPending {
+    pub entitlement_id: String,
+    pub total_amount: i64,
+    pub event_ids: Vec<Uuid>,
 }
