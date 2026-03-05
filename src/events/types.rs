@@ -107,11 +107,8 @@ pub enum ProtocolEvent {
     TierPriceUpdated(TierPriceUpdated),
     TierDeactivated(TierDeactivated),
     TierReactivated(TierReactivated),
-    // TierAddedToService(TierAddedToService),
-    // TierRemovedFromService(TierRemovedFromService),
     // Payments
     EntitlementPurchased(EntitlementPurchased),
-    // QuotaConsumed(QuotaConsumed),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -61,7 +61,6 @@ impl RegistryCommands {
         match self {
             RegistryCommands::Register { metadata_uri } => {
                 let default_path = default_wallet_config()?;
-                // TODO: find a way to cache this
                 let mut wallet = load_wallet_context(default_path)?;
                 let sender = wallet.active_address()?;
                 info!("Registering provider with address {} ...", sender);
@@ -77,7 +76,6 @@ impl RegistryCommands {
                 metadata_uri,
             } => {
                 let default_path = default_wallet_config()?;
-                // TODO: find a way to cache this
                 let mut wallet = load_wallet_context(default_path)?;
                 let sender = wallet.active_address()?;
                 info!("Creating service with address {} ...", sender);
@@ -105,7 +103,6 @@ impl RegistryCommands {
                 metadata_uri,
             } => {
                 let default_path = default_wallet_config()?;
-                // TODO: find a way to cache this
                 let mut wallet = load_wallet_context(default_path)?;
                 let sender = wallet.active_address()?;
                 info!("Updating service {} metadata...", service_id);
@@ -119,7 +116,6 @@ impl RegistryCommands {
             }
             RegistryCommands::SetServiceActive { service_id } => {
                 let default_path = default_wallet_config()?;
-                // TODO: find a way to cache this
                 let mut wallet = load_wallet_context(default_path)?;
                 let sender = wallet.active_address()?;
                 info!("Setting service {} to active...", service_id);

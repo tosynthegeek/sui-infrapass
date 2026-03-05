@@ -33,7 +33,6 @@ pub struct EventListener {
     pub sui_client: Arc<SuiClient>,
     pub client: Client,
     pub package_id: String,
-    /// Sends parsed events to whoever is listening
     pub event_tx: mpsc::Sender<EventPayload>,
     metrics: Arc<RwLock<EventMetrics>>,
 }
@@ -220,16 +219,6 @@ impl EventListener {
                     bcs::from_bytes(bcs_bytes).ok()?;
                 Some(ProtocolEvent::ServiceUpdated(inner))
             }
-            // "registry::TierAddedToService" => {
-            //     let inner: crate::events::types::TierAddedToService =
-            //         bcs::from_bytes(bcs_bytes).ok()?;
-            //     Some(ProtocolEvent::TierAddedToService(inner))
-            // }
-            // "registry::TierRemovedFromService" => {
-            //     let inner: crate::events::types::TierRemovedFromService =
-            //         bcs::from_bytes(bcs_bytes).ok()?;
-            //     Some(ProtocolEvent::TierRemovedFromService(inner))
-            // }
             "pricing::TierCreated" => {
                 let inner: crate::events::types::TierCreated = bcs::from_bytes(bcs_bytes).ok()?;
                 Some(ProtocolEvent::TierCreated(inner))
@@ -254,10 +243,6 @@ impl EventListener {
                     bcs::from_bytes(bcs_bytes).ok()?;
                 Some(ProtocolEvent::EntitlementPurchased(inner))
             }
-            // "payments::QuotaConsumed" => {
-            //     let inner: crate::events::types::QuotaConsumed = bcs::from_bytes(bcs_bytes).ok()?;
-            //     Some(ProtocolEvent::QuotaConsumed(inner))
-            // }
             _ => {
                 warn!("Unhandled event type: {}", label);
                 None

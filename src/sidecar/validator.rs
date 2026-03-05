@@ -41,13 +41,9 @@ pub struct ValidatorClient {
 impl ValidatorClient {
     pub fn new(api_url: String, api_key: String) -> Self {
         let client = Client::builder()
-            // Connection pool: keeps TCP connections alive to your validator API
-            // This alone saves ~3-5ms per request (no TCP handshake overhead)
             .pool_max_idle_per_host(50)
             .pool_idle_timeout(Duration::from_secs(90))
-            // Per-call timeout (separate from the sidecar's overall request timeout)
             .timeout(Duration::from_millis(500))
-            // Use rustls (pure Rust TLS) — no OpenSSL dependency
             .use_rustls_tls()
             .build()
             .expect("Failed to build validator HTTP client");
@@ -148,7 +144,6 @@ impl ValidatorError {
     }
 }
 
-/// Convert a validator response into something cacheable
 pub fn to_cached(resp: &ValidateResponse) -> CachedEntitlement {
     CachedEntitlement {
         id: resp.entitlement_id.clone(),

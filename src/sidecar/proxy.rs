@@ -236,7 +236,6 @@ pub async fn proxy_handler(
                 .await;
 
             if allowed {
-                // In your cache miss path after set_entitlement
                 match resp_to_cache_type.tier_type {
                     0 => {
                         // Subscription — no quota key needed, expiry is enforced by allowed()
@@ -409,7 +408,6 @@ pub async fn deliver_notification(
     ) {
         (Some(url), Some(secret)) => (url.clone(), secret.clone()),
         _ => {
-            // TODO: consider metrics for missed notifications due to misconfiguration
             warn!("Provider webhook URL or secret not configured; skipping notification");
             return Ok(());
         }

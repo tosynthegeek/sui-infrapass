@@ -14,9 +14,6 @@ pub struct ProviderState {
 }
 
 pub async fn get_provider_state(client: &SuiClient, sender: SuiAddress) -> Result<ProviderState> {
-    // TODO: get provider state from cache / storage
-    // if not available, fallback to query
-
     client.provider_state(sender).await
 }
 
